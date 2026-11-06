@@ -1,0 +1,131 @@
+{
+  "_meta": {
+    "captured_at": "2026-11-06",
+    "note": "rendered_text is the text of the captured original page before the address block"
+  },
+  "samples": [
+    {
+      "id": "battery-efb-good",
+      "url": "https://e.dh5z.com/?d=50510126103663109505100606200000000000000000000000021",
+      "payload": "50510126103663109505100606200000000000000000000000021",
+      "expected": {
+        "report_type": {
+          "code": "1",
+          "name": "Battery Test"
+        },
+        "language": {
+          "code": "2",
+          "resolved": "en",
+          "name": "English"
+        },
+        "battery": {
+          "technology": {
+            "code": "5",
+            "label": "EFB"
+          },
+          "verdict": {
+            "code": "1",
+            "label": "GOOD BATTERY"
+          },
+          "soh_percent": "51%",
+          "soc_percent": "95%",
+          "measured_a": "366 A",
+          "voltage_v": "12.61 V",
+          "standard": {
+            "code": "3",
+            "label": "EN"
+          },
+          "rated": "510 A",
+          "resistance_mohm": "6.06 mΩ"
+        },
+        "cranking": null,
+        "charging": null,
+        "vehicle_type": {
+          "code": "2",
+          "label": "Car"
+        }
+      },
+      "rendered_text": "TEST RESULT\nBattery Test\nEFB\n GOOD BATTERY\nSoH\n51%\nSoC\n95%\nMEASURED\n366 A\nVOLTAGE\n12.61 V\nSTANDARD\nEN\nRATED\n510 A\nRESISTANCE\n6.06 mΩ\nVEHICLE TYPE\nCar\nTIME",
+      "source": "user-supplied URL; rendered values observed live on 2026-11-06"
+    },
+    {
+      "id": "cranking-normal",
+      "url": "https://e.dh5z.com/?d=00000000000000000000000000010603580100000000000000022",
+      "payload": "00000000000000000000000000010603580100000000000000022",
+      "expected": {
+        "report_type": {
+          "code": "2",
+          "name": "Cranking Test"
+        },
+        "language": {
+          "code": "2",
+          "resolved": "en",
+          "name": "English"
+        },
+        "battery": null,
+        "cranking": {
+          "verdict": {
+            "code": "1",
+            "label": "NORMAL"
+          },
+          "voltage_v": "10.6 V",
+          "duration_ms": "3580 ms"
+        },
+        "charging": null,
+        "vehicle_type": {
+          "code": "0",
+          "label": "--"
+        }
+      },
+      "rendered_text": "TEST RESULT\nCranking Test\n NORMAL\nCRANKING VOLTAGE\n10.6 V\nDURATION\n3580 ms\nVEHICLE TYPE\n--\nTIME",
+      "source": "user-supplied URL; rendered values observed live on 2026-11-06"
+    },
+    {
+      "id": "public-indexed-polish-agm",
+      "url": "https://e.dh5z.com/?d=207601253061833083066003592000000000000000000000000c1",
+      "payload": "207601253061833083066003592000000000000000000000000c1",
+      "expected": {
+        "report_type": {
+          "code": "1",
+          "name": "Battery Test"
+        },
+        "language": {
+          "code": "c",
+          "resolved": "pl",
+          "name": "Polish"
+        },
+        "battery": {
+          "technology": {
+            "code": "2",
+            "label": "AGM Flat Plate",
+            "label_localized": "Bateria tabletu AGM"
+          },
+          "verdict": {
+            "code": "3",
+            "label": "GOOD-RECHARGE",
+            "label_localized": "DOBRZE - ŁADOWANIA"
+          },
+          "soh_percent": "66%",
+          "soc_percent": "83%",
+          "measured_a": "618 A",
+          "voltage_v": "12.53 V",
+          "standard": {
+            "code": "3",
+            "label": "EN"
+          },
+          "rated": "760 A",
+          "resistance_mohm": "3.59 mΩ"
+        },
+        "cranking": null,
+        "charging": null,
+        "vehicle_type": {
+          "code": "2",
+          "label": "Car",
+          "label_localized": "Samochód"
+        }
+      },
+      "rendered_text": "WYNIK TESTU\nTest baterii\nBateria tabletu AGM\n DOBRZE - ŁADOWANIA\nSoH\n66%\nSoC\n83%\nPomiary\n618 A\nNapięcie\n12.53 V\nNorma baterii\nEN\nOceniane\n760 A\nOpór\n3.59 mΩ\nTYP POJAZDU\nSamochód\nCZAS\n\nAdres：\nOWIM GmbH & Co. KG\nStiftsbergstraße 1\n74167 Neckarsulm\nSąd rejonowy w Stuttgarcie: HRA 721742\n\nFirma OWIM GmbH & Co. KG jest reprezentowana przez OWIM Beteiligungs-GmbH z siedzibą w Neckarsulm, sąd rejonowy w Stuttgarcie, HRB 723775, która reprezentowana jest łącznie przez dwóch uprawnionych do przedstawicielstwa łącznego dyrektorów: Petera Fischera i Martina Reppa.\n\nNr ident. pod :\nDE814 528 612\n\nE-mail :\ninfo@owim.com",
+      "source": "publicly indexed URL (search result title \"wyniki testu baterii\"); rendered values captured live on 2026-11-06"
+    }
+  ]
+}

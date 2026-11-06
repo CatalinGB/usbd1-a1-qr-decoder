@@ -1,0 +1,2493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<meta name="color-scheme" content="light dark">
+<title>USBD1 A1 Report Reader — offline QR decoder</title>
+<meta name="description" content="Offline decoder for Ultimate Speed USBD1 A1 battery-tester QR reports. Paste the report URL or raw payload; no network required.">
+<script>
+  try {
+    var t = localStorage.getItem('usbd1-theme');
+    if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #eef3f6;
+    --bg-2: #f7fafb;
+    --surface: #ffffff;
+    --surface-2: #f5f8fa;
+    --ink: #14222e;
+    --ink-2: #314253;
+    --muted: #66788a;
+    --line: #d9e3ea;
+    --line-2: #c6d4de;
+    --accent: #0d6b5d;
+    --accent-2: #0a544a;
+    --accent-soft: #e2f1ed;
+    --good: #0e8a61;
+    --good-soft: #e3f5ed;
+    --warn: #a96500;
+    --warn-soft: #fdf1da;
+    --bad: #b32d2d;
+    --bad-soft: #fbe6e6;
+    --info: #2563a8;
+    --info-soft: #e6f0fb;
+    --track: #e5edf2;
+    --shadow: 0 1px 2px rgba(10, 30, 40, .05), 0 10px 30px -18px rgba(10, 30, 40, .25);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b141b;
+      --bg-2: #0e1921;
+      --surface: #111f29;
+      --surface-2: #162834;
+      --ink: #e8f0f5;
+      --ink-2: #c3d2dc;
+      --muted: #8fa3b2;
+      --line: #223540;
+      --line-2: #2e4654;
+      --accent: #43c2a8;
+      --accent-2: #6fe0c8;
+      --accent-soft: #12332f;
+      --good: #4fd3a4;
+      --good-soft: #12332a;
+      --warn: #f0b35b;
+      --warn-soft: #3a2a12;
+      --bad: #ff8a8a;
+      --bad-soft: #3b1d1f;
+      --info: #7ab6ff;
+      --info-soft: #162b44;
+      --track: #203541;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 18px 40px -24px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b141b;
+    --bg-2: #0e1921;
+    --surface: #111f29;
+    --surface-2: #162834;
+    --ink: #e8f0f5;
+    --ink-2: #c3d2dc;
+    --muted: #8fa3b2;
+    --line: #223540;
+    --line-2: #2e4654;
+    --accent: #43c2a8;
+    --accent-2: #6fe0c8;
+    --accent-soft: #12332f;
+    --good: #4fd3a4;
+    --good-soft: #12332a;
+    --warn: #f0b35b;
+    --warn-soft: #3a2a12;
+    --bad: #ff8a8a;
+    --bad-soft: #3b1d1f;
+    --info: #7ab6ff;
+    --info-soft: #162b44;
+    --track: #203541;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 18px 40px -24px rgba(0,0,0,.7);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(900px 420px at 12% -10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+      radial-gradient(700px 380px at 100% 0%, color-mix(in srgb, var(--info) 10%, transparent), transparent 70%),
+      var(--bg);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { width: min(1060px, calc(100% - 32px)); margin: 0 auto; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  a { color: var(--accent); }
+  code, .mono { font-family: var(--mono); }
+
+  /* Header */
+  .site-header {
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.06), transparent 45%),
+      linear-gradient(120deg, #0a1d26 0%, #0d2d2b 55%, #103d38 100%);
+    color: #edf7f5;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .header-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 24px; padding: 30px 0 28px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+  .brand-mark {
+    width: 54px; height: 54px; border-radius: 14px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,255,255,.04));
+    border: 1px solid rgba(255,255,255,.18);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px -16px #000;
+    color: #8ff0d8;
+  }
+  .brand h1 { margin: 0; font-size: clamp(22px, 3vw, 30px); line-height: 1.15; letter-spacing: -.02em; }
+  .brand p { margin: 5px 0 0; color: #a9c4c7; font-size: 14px; }
+  .header-side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 11px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.06);
+    color: #d7ebe8; font-size: 12px; font-weight: 600; letter-spacing: .02em;
+    white-space: nowrap;
+  }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: #59e0b6; box-shadow: 0 0 0 3px rgba(89,224,182,.18); }
+  .icon-btn {
+    width: 38px; height: 38px; padding: 0; border-radius: 11px;
+    display: grid; place-items: center;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16);
+    color: #d7ebe8; cursor: pointer;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,.14); }
+
+  main { padding: 26px 0 110px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .input-card { padding: 20px; margin-bottom: 20px; }
+  .input-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .input-head h2 { margin: 0; font-size: 18px; letter-spacing: -.01em; }
+  .input-head p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+  .input-actions { display: flex; gap: 8px; }
+  .btn {
+    appearance: none; border: 1px solid var(--line-2); background: var(--surface);
+    color: var(--ink); border-radius: 10px; padding: 9px 14px;
+    font: inherit; font-weight: 650; font-size: 14px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background .15s, border-color .15s, transform .1s;
+    min-height: 40px;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible, .icon-btn:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent); outline-offset: 2px;
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff;
+    box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  .btn-primary:hover { filter: brightness(1.06); background: linear-gradient(180deg, var(--accent), var(--accent-2)); }
+  .btn-ghost { background: transparent; border-color: var(--line); color: var(--ink-2); }
+  .btn-ghost:hover { background: var(--surface-2); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  textarea {
+    width: 100%; min-height: 106px; resize: vertical;
+    margin-top: 14px; padding: 13px 15px;
+    border: 1px solid var(--line-2); border-radius: 12px;
+    background: var(--surface-2); color: var(--ink);
+    font: 14px/1.55 var(--mono);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent); outline: none; }
+  .input-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .input-status { margin-left: auto; color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
+  .samples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+  .samples-label { align-self: center; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-right: 2px; }
+  .sample {
+    background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+    color: color-mix(in srgb, var(--accent) 72%, var(--ink));
+    border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .sample:hover { filter: brightness(.98); transform: translateY(-1px); }
+
+  /* Report header */
+  .report-enter { animation: rise .36s cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .hero {
+    --hero-tone: var(--tone, var(--accent));
+    display: flex; align-items: stretch; justify-content: space-between; gap: 18px;
+    padding: 22px; margin-bottom: 14px; flex-wrap: wrap;
+    position: relative; overflow: hidden;
+  }
+  .hero::after {
+    content: ""; position: absolute; right: -60px; top: -80px; width: 240px; height: 240px;
+    border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--hero-tone, var(--accent)) 18%, transparent), transparent 65%);
+    pointer-events: none;
+  }
+  .hero-main { min-width: 0; position: relative; z-index: 1; }
+  .eyebrow { color: var(--muted); font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+  .hero h2 { margin: 5px 0 6px; font-size: clamp(26px, 4vw, 40px); line-height: 1.08; letter-spacing: -.03em; color: var(--ink); }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+  .meta-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    color: var(--ink-2); border-radius: 999px; padding: 4px 10px;
+    font-size: 12.5px; font-weight: 600;
+  }
+  .hero-side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 12px; position: relative; z-index: 1; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 750;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .tone-good { --tone: var(--good); --tone-soft: var(--good-soft); }
+  .tone-warn { --tone: var(--warn); --tone-soft: var(--warn-soft); }
+  .tone-bad { --tone: var(--bad); --tone-soft: var(--bad-soft); }
+  .tone-info { --tone: var(--info); --tone-soft: var(--info-soft); }
+  .tone-neutral { --tone: var(--muted); --tone-soft: var(--surface-2); }
+  .status-pill.good { background: var(--good-soft); color: var(--good); border-color: color-mix(in srgb, var(--good) 25%, transparent); }
+  .status-pill.warn { background: var(--warn-soft); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
+  .status-pill.bad { background: var(--bad-soft); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 25%, transparent); }
+  .hero-code { color: var(--muted); font: 12px var(--mono); }
+
+  /* Verdict strip */
+  .verdict-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .verdict-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 13px;
+    background: var(--tone-soft); border: 1px solid color-mix(in srgb, var(--tone) 22%, var(--line));
+  }
+  .verdict-icon {
+    width: 36px; height: 36px; border-radius: 10px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    background: color-mix(in srgb, var(--tone) 16%, var(--surface));
+    color: var(--tone);
+  }
+  .verdict-copy { min-width: 0; }
+  .verdict-copy span { display: block; color: var(--muted); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; }
+  .verdict-copy strong { display: block; color: var(--tone); font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; }
+  .verdict-code { margin-left: auto; color: var(--muted); font: 11.5px var(--mono); white-space: nowrap; }
+
+  /* Section + metrics */
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 22px 2px 10px; }
+  .section-head h3 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
+  .section-head span { color: var(--muted); font-size: 12.5px; }
+  .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 4px; }
+  .gauge-card {
+    padding: 18px; display: flex; align-items: center; gap: 16px; min-height: 146px;
+  }
+  .gauge {
+    --pct: 0;
+    width: 104px; height: 104px; flex: 0 0 auto; position: relative;
+    border-radius: 50%;
+    background: conic-gradient(var(--tone, var(--accent)) calc(var(--pct) * 1%), var(--track) 0);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--accent)) 12%, transparent);
+  }
+  .gauge::before {
+    content: ""; position: absolute; inset: 9px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--line);
+  }
+  .gauge-label {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+    z-index: 1;
+  }
+  .gauge-label strong { font-size: 24px; line-height: 1; letter-spacing: -.03em; }
+  .gauge-label span { display: block; margin-top: 4px; color: var(--muted); font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; }
+  .gauge-copy h4 { margin: 0 0 3px; font-size: 15px; }
+  .gauge-copy p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .gauge-copy .raw { display: inline-block; margin-top: 8px; color: var(--muted); font: 11.5px var(--mono); }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .stat-card { padding: 16px 17px; min-height: 112px; display: flex; flex-direction: column; justify-content: center; }
+  .stat-label { color: var(--muted); font-size: 11.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; }
+  .stat-value { margin-top: 6px; font-size: clamp(22px, 3vw, 30px); line-height: 1.05; letter-spacing: -.03em; font-weight: 750; color: var(--ink); overflow-wrap: anywhere; }
+  .stat-value small { font-size: .55em; font-weight: 650; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
+  .stat-raw { margin-top: 7px; color: var(--muted); font: 11.5px var(--mono); }
+  .stat-note { margin-top: 6px; color: var(--muted); font-size: 12px; }
+
+  /* Details */
+  .detail-card { padding: 20px; margin-top: 18px; }
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .detail {
+    background: var(--surface); padding: 13px 15px; min-height: 74px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .detail span { color: var(--muted); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; }
+  .detail strong { margin-top: 3px; font-size: 15px; overflow-wrap: anywhere; }
+  .detail em { display: block; margin-top: 3px; color: var(--muted); font: 11.5px var(--mono); font-style: normal; }
+
+  /* Callout */
+  .callout {
+    display: flex; gap: 13px; padding: 16px 18px; margin-top: 18px;
+    border-radius: 13px; background: var(--warn-soft);
+    border: 1px solid color-mix(in srgb, var(--warn) 25%, var(--line));
+    color: var(--ink-2);
+  }
+  .callout .callout-icon { color: var(--warn); flex: 0 0 auto; margin-top: 1px; }
+  .callout strong { display: block; color: var(--ink); font-size: 14px; margin-bottom: 3px; }
+  .callout p { margin: 0; font-size: 13.5px; }
+
+  /* Issues */
+  .issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .issue { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+  .badge { flex: 0 0 auto; display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+  .badge.error { background: var(--bad-soft); color: var(--bad); }
+  .badge.warning { background: var(--warn-soft); color: var(--warn); }
+  .badge.info { background: var(--info-soft); color: var(--info); }
+  .issue-text { font-size: 13px; color: var(--ink-2); }
+  .issue-text code { font-size: 11.5px; color: var(--muted); }
+
+  /* Raw */
+  details.raw-card { padding: 0; margin-top: 18px; overflow: hidden; }
+  details.raw-card > summary {
+    cursor: pointer; padding: 16px 18px; font-weight: 700; list-style: none;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  details.raw-card > summary::-webkit-details-marker { display: none; }
+  details.raw-card > summary .chev { transition: transform .2s; color: var(--muted); }
+  details.raw-card[open] > summary .chev { transform: rotate(180deg); }
+  .raw-body { padding: 0 18px 18px; }
+  .raw-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .raw-toolbar span { color: var(--muted); font-size: 12px; }
+  pre.payload {
+    margin: 0 0 16px; padding: 14px 15px; border-radius: 11px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    font: 13px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere;
+    color: var(--ink);
+  }
+  .ruler { display: flex; gap: 0; color: var(--muted); font: 10px/1 var(--mono); margin-bottom: 4px; }
+  .ruler span { flex: 1; text-align: left; }
+  .slices { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .slices th, .slices td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+  .slices th { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; }
+  .slices td:first-child, .slices td:nth-child(3) { font-family: var(--mono); }
+  .slices tr:last-child td { border-bottom: 0; }
+
+  /* Export */
+  .export-bar {
+    position: sticky; bottom: 14px; z-index: 5;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    margin-top: 18px; padding: 12px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 12px 30px -18px rgba(10,30,40,.5);
+    backdrop-filter: blur(10px);
+  }
+  .export-bar .spacer { flex: 1; }
+  .export-bar .btn { min-height: 36px; padding: 7px 12px; font-size: 13px; }
+
+  .empty {
+    text-align: center; padding: 46px 22px; color: var(--muted);
+  }
+  .empty .glyph { font-size: 34px; color: var(--line-2); margin-bottom: 6px; }
+  .empty strong { display: block; color: var(--ink-2); font-size: 16px; margin-bottom: 4px; }
+
+  footer { padding: 0 0 40px; color: var(--muted); font-size: 12px; }
+  footer .wrap { border-top: 1px solid var(--line); padding-top: 18px; }
+  footer p { margin: 0 0 6px; max-width: 900px; }
+  footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+
+  @media (min-width: 760px) {
+    .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 620px) {
+    .header-inner { padding: 22px 0; }
+    .brand-mark { width: 46px; height: 46px; }
+    .hero { padding: 18px; }
+    .hero-side { align-items: flex-start; flex-direction: row; width: 100%; justify-content: space-between; }
+    .metrics { grid-template-columns: 1fr; }
+    .gauge-card { min-height: 128px; }
+    .gauge { width: 92px; height: 92px; }
+    .input-status { width: 100%; margin-left: 0; }
+    .export-bar { position: static; }
+    .slices th:nth-child(3), .slices td:nth-child(3) { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="7" width="16.5" height="10" rx="2.5"></rect>
+          <path d="M22 10.5v3"></path>
+          <path d="M6.5 10.5v3M10 10.5v3M13.5 10.5v3"></path>
+        </svg>
+      </div>
+      <div>
+        <h1>USBD1 A1 Report Reader</h1>
+        <p>Offline decoder for Ultimate Speed battery-tester QR reports</p>
+      </div>
+    </div>
+    <div class="header-side">
+      <span class="chip"><span class="dot"></span> No network</span>
+      <span class="chip">Behavior-verified</span>
+      <button id="theme" class="icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="input-card card" aria-labelledby="input-title">
+    <div class="input-head">
+      <div>
+        <h2 id="input-title">Paste a report</h2>
+        <p>Full report URL, a <code>?d=…</code> query, or the raw payload. Everything stays in this page.</p>
+      </div>
+      <div class="input-actions">
+        <button id="paste" class="btn btn-ghost" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path></svg>
+          Paste
+        </button>
+        <button id="clear" class="btn btn-ghost" type="button">Clear</button>
+      </div>
+    </div>
+    <label class="sr-only" for="input">Report URL or payload</label>
+    <textarea id="input" spellcheck="false" autocomplete="off" placeholder="https://e.dh5z.com/?d=50510126103663109505100606200000000000000000000000021&#10;&#10;or&#10;&#10;50510126103663109505100606200000000000000000000000021"></textarea>
+    <div class="input-foot">
+      <button id="decode" class="btn btn-primary" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+        Decode report
+      </button>
+      <span class="input-status" id="input-status">Waiting for a report…</span>
+    </div>
+    <div id="samples" class="samples" aria-label="Sample reports">
+      <span class="samples-label">Try</span>
+    </div>
+  </section>
+
+  <div id="output" aria-live="polite">
+    <section class="card empty" id="empty-state">
+      <div class="glyph">⌁</div>
+      <strong>No report decoded yet</strong>
+      <p>Paste a QR report link above, or try one of the samples.</p>
+    </section>
+  </div>
+
+  <section class="export-bar" id="export-bar" hidden aria-label="Export">
+    <button id="download-json" class="btn btn-ghost" type="button">Download JSON</button>
+    <button id="download-md" class="btn btn-ghost" type="button">Download Markdown</button>
+    <button id="copy-json" class="btn btn-ghost" type="button">Copy JSON</button>
+    <button id="copy-md" class="btn btn-ghost" type="button">Copy Markdown</button>
+    <span class="spacer"></span>
+    <button id="share-link" class="btn btn-primary" type="button">Copy share link</button>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Independent preservation project.</strong> Not affiliated with, endorsed by or sponsored by OWIM GmbH &amp; Co. KG, Lidl, or Ultimate Speed. Product names identify the device only.</p>
+    <p>Verdicts are tester-reported codes, not an independent diagnosis. TIME is not encoded in the QR payload. <a href="https://github.com/CatalinGB/usbd1-a1-qr-decoder">Repository, format specification and evidence</a> · <a href="https://github.com/CatalinGB/usbd1-a1-qr-decoder/blob/main/DISCLAIMER.md">Disclaimer</a></p>
+  </div>
+</footer>
+
+<script>
+// Captured label tables for the USBD1 A1 / e.dh5z.com report renderer.
+//
+// Provenance: the strings below are short functional UI labels observed in the
+// publicly served report page on 2026-11-06. They are reproduced only so that an
+// encoded label can be read back faithfully. They are not an original
+// translation work and no vendor code is included in this project.
+// See NOTICE and FORMAT.md.
+(function (root) {
+  var LOCALES = {
+  "en": {
+    "battery_type": {
+      "0": "--",
+      "1": "Regular Flooded",
+      "2": "AGM Flat Plate",
+      "3": "AGM Spiral",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Lithium Ion"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "GOOD BATTERY",
+      "2": "REPLACE",
+      "3": "GOOD-RECHARGE",
+      "4": "CHARGE & RETEST",
+      "5": "BAD CELL"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMAL",
+      "2": "LOW",
+      "3": "HIGH"
+    },
+    "charging_result": {
+      "0": "NO OUTPUT",
+      "1": "VOLTAGE NORMAL",
+      "2": "VOLTAGE HIGH",
+      "3": "VOLTAGE LOW"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motorcycle",
+      "2": "Car",
+      "3": "Truck"
+    }
+  },
+  "de": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM-Flachplatte",
+      "3": "AGM-Spirale",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Lithium Batterie"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "GUTE BATTERIE",
+      "2": "ERSETZEN",
+      "3": "GUT - WIEDER AUFLADEN",
+      "4": "LADEN - ERNEUT PRÜFEN",
+      "5": "SCHLECHTE ZELLE"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMAL",
+      "2": "NIEDRIG",
+      "3": "HOCH"
+    },
+    "charging_result": {
+      "0": "KEIN AUSGANG",
+      "1": "NORMAL",
+      "2": "HOHE SPANNUNG",
+      "3": "NIEDRIGE SPANNUNG"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motorrad",
+      "2": "PKW",
+      "3": "LKW."
+    }
+  },
+  "es": {
+    "battery_type": {
+      "0": "--",
+      "1": "Plomo-ácido convencional",
+      "2": "AGM de placa plana",
+      "3": "AGM espiral",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Lithium Ion"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "BUENA BATERÍA",
+      "2": "REEMPLAZAR",
+      "3": "BIEN – RECARGAR",
+      "4": "CARGA – COMPROBAR DE NUEVO",
+      "5": "CELDA MALA"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMAL",
+      "2": "BAJO",
+      "3": "TENSIÓN ALTA"
+    },
+    "charging_result": {
+      "0": "SIN SALIDA",
+      "1": "NORMAL",
+      "2": "TENSIÓN ALTA",
+      "3": "TENSIÓN BAJA"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motocicleta",
+      "2": "Automóvil",
+      "3": "Camión"
+    }
+  },
+  "fr": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "Plaque plate AGM",
+      "3": "Spirale AGM",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Batterie au lithium"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "BONNE BATTERIE",
+      "2": "REMPLACER",
+      "3": "BONNE - À RECHARGER",
+      "4": "CHARGER - VÉRIFIER À NOUVEAU",
+      "5": "MAUVAISE CELLULE"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMAL",
+      "2": "FAIBLE",
+      "3": "HAUT"
+    },
+    "charging_result": {
+      "0": "AUCUNE SORTIE",
+      "1": "NORMAL",
+      "2": "TENSION ÉLEVÉE",
+      "3": "TENSION BASSE"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Moto",
+      "2": "Voiture",
+      "3": "Camion"
+    }
+  },
+  "it": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM piatta",
+      "3": "AGM a spirale",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "LITHIUM ION"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "BATTERIA BUONA",
+      "2": "SOSTITUIRE",
+      "3": "BUONA - RICARICARE",
+      "4": "CARICARE - RICONTROLLARE",
+      "5": "CELLA DIFETTOSA"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMALE",
+      "2": "BASSA",
+      "3": "ALTA"
+    },
+    "charging_result": {
+      "0": "NESSUNA USCITA",
+      "1": "NORMALE",
+      "2": "ALTA TENSIONE",
+      "3": "BASSA TENSIONE"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Moto",
+      "2": "Autovettura",
+      "3": "Autocarro"
+    }
+  },
+  "nl": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM VLAKKE PLAAT",
+      "3": "AGM SPIRAAL",
+      "4": "GEL BATTERIJ",
+      "5": "EFB BATTERIJ",
+      "6": "Lithium Ion"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "GOEDE ACCU",
+      "2": "VERVANGEN",
+      "3": "GOED-OPGELADEN",
+      "4": "OPLAAD & HERTESTEN",
+      "5": "SLECHTE ACCU"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMAL",
+      "2": "LOW",
+      "3": "HIGH"
+    },
+    "charging_result": {
+      "0": "GEEN UITGANG",
+      "1": "NORMAAL",
+      "2": "HOGE SPANNING",
+      "3": "HAGE SPANNING"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "MOTORRIJWIELEN",
+      "2": "MOTORVOERTUIGEN",
+      "3": "VRACHTWAGENS"
+    }
+  },
+  "zh": {
+    "battery_type": {
+      "0": "--",
+      "1": "普通电池",
+      "2": "AGM平板电池",
+      "3": "AGM卷绕电池",
+      "4": "GEL胶体电池",
+      "5": "EFB电池",
+      "6": "锂电池"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "好电池",
+      "2": "请更换电池",
+      "3": "好电池，请充电",
+      "4": "请充电后再测试",
+      "5": "坏格电池"
+    },
+    "cranking_result": {
+      "0": "无输出",
+      "1": "正常",
+      "2": "电压偏低",
+      "3": "电压偏高"
+    },
+    "charging_result": {
+      "0": "无输出",
+      "1": "正常",
+      "2": "电压偏高",
+      "3": "电压偏低"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "摩托车",
+      "2": "汽车",
+      "3": "卡车"
+    }
+  },
+  "jp": {
+    "battery_type": {
+      "0": "--",
+      "1": "普通のバッテリー",
+      "2": "AGMフラットプレートバッテリー",
+      "3": "AGMロールバッテリー",
+      "4": "GELゲルバッテリー",
+      "5": "EFBロールバッテリー",
+      "6": "リチウム電池です"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "良いバッテリー",
+      "2": "交換用バッテリー",
+      "3": "グッドリチャージ",
+      "4": "充電と再テスト",
+      "5": "再テスト"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "電圧が正常",
+      "2": "電圧が低い",
+      "3": "電圧が高い"
+    },
+    "charging_result": {
+      "0": "出力なし",
+      "1": "電圧が正常",
+      "2": "電圧が高い",
+      "3": "電圧が低い"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "バイクです",
+      "2": "自動車です",
+      "3": "トラックです"
+    }
+  },
+  "ko": {
+    "battery_type": {
+      "0": "--",
+      "1": "일반 배터리",
+      "2": "AGM태블릿 배터리",
+      "3": "AGM원딩 배터리",
+      "4": "GEL콜로이드 배터리",
+      "5": "EFB 배터리",
+      "6": "리튬 배터리"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "양질 배터리",
+      "2": "교체",
+      "3": "양질 배터리 - 충전 필요",
+      "4": "충전 - 재테스트",
+      "5": "불량 배터리"
+    },
+    "cranking_result": {
+      "0": "출력 없음",
+      "1": "정상",
+      "2": "전압 낮음",
+      "3": "전압 높음"
+    },
+    "charging_result": {
+      "0": "출력 없음",
+      "1": "정상",
+      "2": "전압 높음",
+      "3": "전압 낮음"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "오토바이",
+      "2": "자동차",
+      "3": "트럭"
+    }
+  },
+  "ru": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "Aплоская батарея AGM",
+      "3": "Батареи с обмоткой AGM",
+      "4": "Коллоидная батарея GEL",
+      "5": "EFB аккумулятор",
+      "6": "литиевая батарейка"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "ХОРОШИЙ",
+      "2": "ЗАМЕНИТЬ",
+      "3": "ХОРОШИЙ - ЗАРЯДКА",
+      "4": "ЗАРЯДКА - СНОВА",
+      "5": "ПЛОХАЯ БАТАРЕЯ"
+    },
+    "cranking_result": {
+      "0": "НЕТ ВЫХОДА",
+      "1": "НОРМАЛЬНО",
+      "2": "ИЗКОЕ НАПРЯЖЕНИЕ",
+      "3": "ВЫСОКОЕ НАПРЯЖЕНИЕ"
+    },
+    "charging_result": {
+      "0": "НЕТ ВЫХОДА",
+      "1": "НОРМАЛЬНО",
+      "2": "ВЫСОКОЕ НАПРЯЖЕНИЕ",
+      "3": "ИЗКОЕ НАПРЯЖЕНИЕ"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Мотоцикл",
+      "2": "Автомашина",
+      "3": "Грузовик"
+    }
+  },
+  "pt": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM - configuração plana",
+      "3": "AGM - configuração em espiral",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Bateria de lítio"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "BATERIA EM BOM ESTADO",
+      "2": "SUBSTITUIR",
+      "3": "BOM ESTADO - RECARREGAR",
+      "4": "CARREGA - TESTAR NOVAMENTE",
+      "5": "CÉLULA EM MAU ESTADO"
+    },
+    "cranking_result": {
+      "0": "SEM SAÍDA",
+      "1": "NORMAL",
+      "2": "BAIXO",
+      "3": "ALTA"
+    },
+    "charging_result": {
+      "0": "SEM SAÍDA",
+      "1": "NORMAL",
+      "2": "ALTA TENSÃO",
+      "3": "BAIXA TENSÃO"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motocicleta",
+      "2": "Automóvel",
+      "3": "Camião"
+    }
+  },
+  "pl": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "Bateria tabletu AGM",
+      "3": "Akumulator uzwojenia AGM",
+      "4": "Bateria żelowa",
+      "5": "Bateria EFB",
+      "6": "bateria litowa"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "DOBRA BATERIA",
+      "2": "ZASTĄPIĆ",
+      "3": "DOBRZE - ŁADOWANIA",
+      "4": "ŁADOWANIA - PONOWNIE",
+      "5": "ZŁA BATERIA"
+    },
+    "cranking_result": {
+      "0": "BRAK WYJŚCIA",
+      "1": "NORMALNA",
+      "2": "NISKIE NAPIĘCIE",
+      "3": "WYSOKIE NAPIĘCIE"
+    },
+    "charging_result": {
+      "0": "BRAK WYJŚCIA",
+      "1": "NORMALNA",
+      "2": "WYSOKIE NAPIĘCIE",
+      "3": "NISKIE NAPIĘCIE"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motocykl",
+      "2": "Samochód",
+      "3": "Ciężarówka"
+    }
+  },
+  "fi": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM-levyakku",
+      "3": "AAGM-spiraaliakku",
+      "4": "GEL (Geeliakku)",
+      "5": "EFB (EFB-akku)",
+      "6": "Litiumparisto"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "HYVÄ AKKU",
+      "2": "VAIHDA",
+      "3": "HYVÄ – LATAA UUDELLEEN",
+      "4": "LATAA – TARKISTA UUDELLEEN",
+      "5": "HUONO KENNO"
+    },
+    "cranking_result": {
+      "0": "EI KAPASITEETTIA",
+      "1": "NORMAALI",
+      "2": "ALHAINEN",
+      "3": "KORKEA JÄNNITE"
+    },
+    "charging_result": {
+      "0": "EI TULOSTETTA",
+      "1": "NORMAALI",
+      "2": "KORKEA JÄNNITE",
+      "3": "ALHAINEN JÄNNITE"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Moottoripyörä",
+      "2": "Henkilöauto",
+      "3": "Kuorma-auto"
+    }
+  },
+  "gr": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM επίπεδη πλάκα",
+      "3": "AGM σπείρα",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "μπαταρία λιθίου"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "ΚΑΛΗ ΜΠΑΤΑΡΙΑ",
+      "2": "ΑΝΤΙΚΑΤΑΣΤΗΣΤΕ",
+      "3": "ΚΑΛΗ - ΦΟΡΤΙΣΤΕ",
+      "4": "ΦΟΡΤΙΣΗ - ΕΛΕΓΞΤΕ ΞΑΝΑ",
+      "5": "ΕΛΑΤΤΩΜΑΤΙΚΗ ΚΥΨΕΛΗ"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "ΚΑΝΟΝΙΚΗ",
+      "2": "ΧΑΜΗΛΗ",
+      "3": "ΥΨΗΛΗ"
+    },
+    "charging_result": {
+      "0": "ΚΑΜΙΑ ΕΞΟΔΟΣ",
+      "1": "ΚΑΝΟΝΙΚΗ",
+      "2": "ΥΨΗΛΗ ΤΑΣΗ",
+      "3": "VΧΑΜΗΛΗ ΤΑΣΗ"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Μοτοσικλέτα",
+      "2": "ΙΧ",
+      "3": "Φορτηγό"
+    }
+  },
+  "bg": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM с плоски плочи",
+      "3": "AGM спираловиден",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "литиева батерия"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "ДОБЪР АКУМУЛАТОР",
+      "2": "СМЕНЕТЕ",
+      "3": "ДОБЪР - ЗАРЕДЕТЕ ОТНОВО",
+      "4": "ЗАРЕДЕТЕ - ПРОВЕРЕТЕ ОТНОВО",
+      "5": "ДЕФЕКТНА КЛЕТКА"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "НОРМАЛНО",
+      "2": "НИСКО",
+      "3": "ВИСОКО"
+    },
+    "charging_result": {
+      "0": "НЯМА ИЗХОД",
+      "1": "НОРМАЛНО",
+      "2": "ВИСОКО НАПРЕЖЕНИЕ",
+      "3": "НИСКО НАПРЕЖЕНИЕ"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Мотоциклет",
+      "2": "Автомобил",
+      "3": "Камион"
+    }
+  },
+  "hr": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM s ravnim pločama",
+      "3": "AGM spiralni",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Litijska baterija"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "DOBAR AKUMULATOR",
+      "2": "ZAMIJENITE",
+      "3": "DOBAR – NAPUNITE",
+      "4": "NAPUNITE – PROVJERITE PONOVNO",
+      "5": "LOŠA ĆELIJA"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMALNO",
+      "2": "NISKO",
+      "3": "VISOKO"
+    },
+    "charging_result": {
+      "0": "NEMA IZLAZA",
+      "1": "NORMALNO",
+      "2": "VISOK NAPON",
+      "3": "NIZAK NAPON"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motocikl",
+      "2": "Automobil",
+      "3": "Kamion"
+    }
+  },
+  "se": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM plan platta",
+      "3": "AGM-spiral",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Litiumbatteri"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "BRA BATTERI",
+      "2": "BYT UT",
+      "3": "BRA - LADDA UPP IGEN",
+      "4": "LADDA - KONTROLLERA IGEN",
+      "5": "DÅLIG CELL"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMAL",
+      "2": "LÅG",
+      "3": "HÖG"
+    },
+    "charging_result": {
+      "0": "INGEN UTGÅNG",
+      "1": "NORMAL",
+      "2": "HÖG SPÄNNING",
+      "3": "LÅG SPÄNNING"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motorcykel",
+      "2": "Personbil",
+      "3": "Lastbil"
+    }
+  },
+  "cz": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "Plochá deska AGM",
+      "3": "Spirála AGM",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Lithiová baterie"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "DOBRÁ BATERIE",
+      "2": "NAHRADIT",
+      "3": "DOBŘE - DOBIJTE",
+      "4": "NABIJTE – ZNOVU ZKONTROLUJTE",
+      "5": "ŠPATNÁ BUŇKA"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMÁLNÍ",
+      "2": "NÍZKÉ",
+      "3": "VYSOKÝ"
+    },
+    "charging_result": {
+      "0": "ŽÁDNÝ VÝSTUP",
+      "1": "NORMÁLNÍ",
+      "2": "VYSOKÉ NAPĚTÍ",
+      "3": "NÍZKÉ NAPĚTÍ"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motocykl",
+      "2": "Osobní auto",
+      "3": "Nákladní vozidlo"
+    }
+  },
+  "da": {
+    "battery_type": {
+      "0": "--",
+      "1": "Normal",
+      "2": "AGM fladpladet",
+      "3": "AGM spiral",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Lithium batteri"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "GODT BATTERI",
+      "2": "UDSKIFT",
+      "3": "GODT - GENOPLAD",
+      "4": "OPLAD - TEST IGEN",
+      "5": "DÅRLIG CELLE"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMAL",
+      "2": "LAV",
+      "3": "HØJ"
+    },
+    "charging_result": {
+      "0": "ŽÁDNÝ VÝSTUP",
+      "1": "NORMAL",
+      "2": "HØJ SPÆNDING",
+      "3": "LAV SPÆNDING"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motorcykel",
+      "2": "Personbil",
+      "3": "Lastbil"
+    }
+  }
+};
+  if (typeof module === 'object' && module.exports) module.exports = LOCALES;
+  else root.USBD1_LOCALES = LOCALES;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+<script>
+/*
+ * USBD1 A1 QR report decoder
+ *
+ * Independent, clean-room-style reimplementation of the report format that the
+ * publicly served e.dh5z.com report page (captured 2026-11-06) parses from the
+ * `d` query parameter. No vendor source code is included or required.
+ *
+ * Format facts and their evidence are documented in FORMAT.md and
+ * INVESTIGATION.md. The parser deliberately mirrors the captured page's
+ * JavaScript semantics (including parseInt quirks and missing-value display)
+ * and additionally reports every place where the input is not a clean,
+ * 53-character report.
+ *
+ * License: MIT (see LICENSE). Label strings are short functional UI labels
+ * observed in the captured page; see NOTICE.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./locales.js'));
+  } else {
+    root.USBD1 = factory(root.USBD1_LOCALES);
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (LOCALES) {
+  'use strict';
+
+  var FORMAT_ID = 'usbd1-a1.dh5z.webapp-2024-11-29';
+  var EXPECTED_LENGTH = 53;
+
+  var SLICES = {
+    battery_type: [0, 1],
+    rated: [1, 5],
+    voltage: [5, 9],
+    measured: [9, 13],
+    standard: [13, 14],
+    battery_result: [14, 15],
+    soc: [15, 18],
+    soh: [18, 21],
+    resistance: [21, 26],
+    vehicle_type: [26, 27],
+    cranking_voltage: [27, 31],
+    cranking_duration: [31, 35],
+    cranking_result: [35, 36],
+    reserved: [36, 38],
+    charging_unloaded: [42, 46],
+    charging_loaded: [38, 42],
+    charging_ripple: [46, 50],
+    charging_result: [50, 51],
+    language: [51, 52],
+    report_type: [52, 53]
+  };
+
+  var STANDARDS = {
+    '0': 'CCA', '1': 'DIN', '2': 'JIS', '3': 'EN', '4': 'IEC',
+    '5': 'GB', '6': 'SAE', '7': 'MCA', '8': 'BCI', '9': 'CA'
+  };
+
+  // Language codes are single case-sensitive characters; the captured page
+  // maps 1-9 and a-j, with every other value falling back to English.
+  var LANGUAGES = {
+    '1': 'de', '2': 'en', '3': 'es', '4': 'fr', '5': 'it', '6': 'nl',
+    '7': 'zh', '8': 'jp', '9': 'ko', 'a': 'ru', 'b': 'pt', 'c': 'pl',
+    'd': 'fi', 'e': 'gr', 'f': 'se', 'g': 'cz', 'h': 'dk', 'i': 'bg', 'j': 'hr'
+  };
+
+  var LANGUAGE_NAMES = {
+    en: 'English', de: 'German', es: 'Spanish', fr: 'French', it: 'Italian',
+    nl: 'Dutch', zh: 'Chinese', jp: 'Japanese', ko: 'Korean', ru: 'Russian',
+    pt: 'Portuguese', pl: 'Polish', fi: 'Finnish', gr: 'Greek', se: 'Swedish',
+    cz: 'Czech', dk: 'Danish', bg: 'Bulgarian', hr: 'Croatian'
+  };
+
+  // JIS battery-size designations, indexed by the numeric `rated` value when
+  // the standard code is 2 (JIS). Captured verbatim as a factual lookup table.
+  var JIS_VALUES = [
+    '26A17', '26A19', '30A19', '34A19', '26B17', '28B17', '28B19', '34B17',
+    '34B19', '36B20', '38B19', '38B20', '40B19', '42B19', '44B19', '44B20',
+    '46B24', '50B24', '55B24', '60B24', '65B24', '32C24', '48D26', '50D20',
+    '55D23', '55D26', '65D23', '65D26', '65D31', '70D23', '75D23', '75D26',
+    '75D31', '80D23', '80D26', '85D23', '85D26', '90D26', '95D31', '105D31',
+    '110D26', '115D31', '95E41', '100E41', '105E41', '110E41', '115E41',
+    '120E41', '130E41', '115F51', '130F51', '145F51', '150F51', '170F51',
+    '145G51', '155G51', '165G51', '180G51', '195G51', '190H52', '210H52',
+    '225H52', '245H52', 'NS40Z', 'NS50Z', 'NS60Z', 'NS70Z', 'N100Z', 'N120Z',
+    'N150Z', 'N200Z'
+  ];
+
+  var REPORT_TYPES = {
+    '1': { name: 'Battery Test', sections: ['battery'] },
+    '2': { name: 'Cranking Test', sections: ['cranking'] },
+    '3': { name: 'Charging Test', sections: ['charging'] },
+    '4': { name: 'All tests', sections: ['battery', 'cranking', 'charging'] }
+  };
+
+  function has(obj, key) {
+    return Object.prototype.hasOwnProperty.call(obj, key);
+  }
+
+  function sliceRaw(payload, range) {
+    var a = range[0], b = range[1];
+    if (payload === null || payload === undefined || payload.length <= a) return null;
+    return payload.slice(a, Math.min(b, payload.length));
+  }
+
+  function sliceComplete(payload, range) {
+    return payload !== null && payload !== undefined && payload.length >= range[1];
+  }
+
+  function charAtOrNull(payload, index) {
+    if (payload === null || payload === undefined || payload.length <= index) return null;
+    return payload.charAt(index);
+  }
+
+  // The captured page calls parseInt() with no radix on the concatenated
+  // characters, so "0x..." is hexadecimal, leading whitespace is skipped,
+  // a sign is accepted, and trailing characters are ignored.
+  function parseIntCompat(raw) {
+    if (raw === null || raw === undefined) return NaN;
+    return parseInt(raw); // intentionally no radix
+  }
+
+  function numberDisplay(value) {
+    return String(value);
+  }
+
+  function safeDecode(value) {
+    if (value === null) return null;
+    try { return decodeURIComponent(value); } catch (e) { return value; }
+  }
+
+  // The original page parses the query itself: percent-decoding only, '+' is
+  // left alone (it is not converted to a space). Mirror that here.
+  function parseQueryString(qs) {
+    var out = [];
+    var s = String(qs || '').replace(/^\?/, '');
+    if (!s) return out;
+    var parts = s.split('&');
+    for (var i = 0; i < parts.length; i++) {
+      if (!parts[i]) continue;
+      var eq = parts[i].indexOf('=');
+      var k = eq < 0 ? parts[i] : parts[i].slice(0, eq);
+      var v = eq < 0 ? null : parts[i].slice(eq + 1);
+      out.push([safeDecode(k), safeDecode(v)]);
+    }
+    return out;
+  }
+
+  function redactUrl(text) {
+    return String(text || '').replace(/([?&]u=)[^&#]*/g, '$1[redacted]');
+  }
+
+  function parseInput(input) {
+    var text = String(input === null || input === undefined ? '' : input).trim();
+    if (!text) {
+      return {
+        kind: 'payload', raw: '', url: null, payload: null,
+        d_count: 0, has_u: false, query_keys: []
+      };
+    }
+    var qIndex = text.indexOf('?');
+    var hashIndex = qIndex >= 0 ? text.indexOf('#', qIndex) : -1;
+    var hasQuery = qIndex >= 0;
+    var qs = hasQuery ? text.slice(qIndex + 1, hashIndex < 0 ? undefined : hashIndex) : (/^d=/.test(text) ? text : '');
+    var pairs = (hasQuery || /^d=/.test(text)) ? parseQueryString(qs) : [];
+    var dValues = [], keys = [], hasU = false;
+    for (var i = 0; i < pairs.length; i++) {
+      keys.push(pairs[i][0]);
+      if (pairs[i][0] === 'd') dValues.push(pairs[i][1]);
+      if (pairs[i][0] === 'u') hasU = true;
+    }
+    var isUrl = /^https?:\/\//i.test(text);
+    var queryLike = hasQuery || /^d=/.test(text);
+    if (isUrl && !queryLike) {
+      return {
+        kind: 'url', raw: text, url: redactUrl(text), payload: null,
+        d_count: 0, has_u: false, query_keys: []
+      };
+    }
+    if (queryLike && (isUrl || /^[?&]/.test(text) || dValues.length || /^d=/.test(text))) {
+      return {
+        kind: isUrl ? 'url' : 'query',
+        raw: text,
+        url: isUrl ? redactUrl(text) : null,
+        payload: dValues.length ? dValues[0] : null,
+        d_count: dValues.length,
+        has_u: hasU,
+        query_keys: keys
+      };
+    }
+    return {
+      kind: 'payload',
+      raw: text,
+      url: null,
+      payload: text,
+      d_count: 0,
+      has_u: false,
+      query_keys: []
+    };
+  }
+
+  function issue(severity, code, field, message) {
+    return { severity: severity, code: code, field: field || null, message: message };
+  }
+
+  function codeField(payload, range, map, locale, fieldName, issues, fallbackPrefix) {
+    var raw = sliceRaw(payload, range);
+    var missing = !sliceComplete(payload, range);
+    var known = raw !== null && has(map, raw);
+    if (missing) {
+      issues.push(issue('error', 'truncated_field', fieldName,
+        'Field ' + fieldName + ' is not fully present in this payload.'));
+    } else if (!known) {
+      issues.push(issue('warning', 'unknown_code', fieldName,
+        'Code "' + raw + '" is not present in the captured ' + fallbackPrefix + ' table.'));
+    }
+    return {
+      code: raw,
+      raw: raw,
+      known: known,
+      missing: missing,
+      label: known ? map[raw] : null,
+      label_localized: known ? ((LOCALES[locale] && has(LOCALES[locale], fallbackPrefix) && LOCALES[locale][fallbackPrefix][raw]) || map[raw]) : null,
+      vendor_fallback: known ? null : (fallbackPrefix === 'battery_type' ? 'batteryTest.type_' + raw :
+        fallbackPrefix === 'battery_result' ? 'batteryTest.result_' + raw :
+        fallbackPrefix === 'cranking_result' ? 'crankingTest.cranking_' + raw :
+        fallbackPrefix === 'charging_result' ? 'chargingTest.charging_' + raw :
+        fallbackPrefix === 'vehicle_type' ? 'carType_' + raw : null)
+    };
+  }
+
+  function numericField(payload, range, divisor, unit, fieldName, issues) {
+    var raw = sliceRaw(payload, range);
+    var complete = sliceComplete(payload, range);
+    var parsed = parseIntCompat(raw);
+    var invalid = Number.isNaN(parsed);
+    var value = invalid ? null : (divisor ? parsed / divisor : parsed);
+    var decimal = raw !== null && /^[0-9]+$/.test(raw);
+    if (!complete) {
+      issues.push(issue('error', 'truncated_field', fieldName,
+        'Field ' + fieldName + ' is not fully present in this payload.'));
+    } else if (!decimal) {
+      issues.push(issue('warning', 'non_decimal_numeric', fieldName,
+        'Field ' + fieldName + ' is not plain decimal ("' + raw + '"); the captured page uses parseInt(), so the value shown here follows its JavaScript conversion.'));
+    }
+    if (complete && invalid) {
+      issues.push(issue('warning', 'invalid_number', fieldName,
+        'Field ' + fieldName + ' ("' + raw + '") converts to NaN in the captured page.'));
+    }
+    return {
+      raw: raw,
+      raw_complete: complete,
+      value: value,
+      invalid: invalid,
+      missing: !complete,
+      decimal: decimal,
+      parse: 'js-parseInt',
+      display: (invalid ? 'NaN' : numberDisplay(value)) + (unit ? ' ' + unit : ''),
+      unit: unit || null
+    };
+  }
+
+  function percentField(payload, range, fieldName, issues) {
+    var f = numericField(payload, range, 0, '', fieldName, issues);
+    f.display = f.invalid ? 'NaN%' : numberDisplay(f.value) + '%';
+    f.unit = '%';
+    return f;
+  }
+
+  function decode(input) {
+    var parsed = parseInput(input);
+    var issues = [];
+    var payload = parsed.payload;
+
+    if (payload === null) {
+      issues.push(issue('error', 'missing_d', 'd',
+        'No d parameter was found. The captured page throws a TypeError and renders no report section when d is absent.'));
+      return emptyResult(parsed, issues);
+    }
+
+    if (parsed.d_count > 1) {
+      issues.push(issue('warning', 'duplicate_d', 'd',
+        'The input contains ' + parsed.d_count + ' d parameters. The captured page receives an array and throws; this decoder uses the first value.'));
+    }
+    if (parsed.has_u) {
+      issues.push(issue('info', 'u_parameter_ignored', 'u',
+        'A u parameter is present. It is not part of the QR payload; it carries an opaque display-date value and is ignored by this decoder.'));
+    }
+
+    var lengthOk = payload.length === EXPECTED_LENGTH;
+    if (!lengthOk) {
+      issues.push(issue('error', 'unsupported_length', 'payload',
+        'Payload length is ' + payload.length + '; the captured renderer expects ' + EXPECTED_LENGTH + ' characters. Best-effort decode follows, but this is not a verified report layout.'));
+      if (payload.length > EXPECTED_LENGTH) {
+        issues.push(issue('info', 'trailing_characters', 'payload',
+          'Characters after position ' + EXPECTED_LENGTH + ' are ignored by the captured renderer.'));
+      }
+    }
+
+    var langRaw = charAtOrNull(payload, 51);
+    var resolved = langRaw !== null && has(LANGUAGES, langRaw) ? LANGUAGES[langRaw] : 'en';
+    if (langRaw !== null && !has(LANGUAGES, langRaw)) {
+      issues.push(issue('warning', 'unknown_language', 'language',
+        'Language code "' + langRaw + '" is not in the captured table; the page falls back to English.'));
+    }
+    if (langRaw === null) {
+      issues.push(issue('error', 'truncated_field', 'language',
+        'Language code is missing; the page falls back to English.'));
+    }
+
+    var typeRaw = charAtOrNull(payload, 52);
+    var typeKnown = typeRaw !== null && has(REPORT_TYPES, typeRaw);
+    if (typeRaw !== null && !typeKnown) {
+      issues.push(issue('warning', 'unknown_report_type', 'report_type',
+        'Report type code "' + typeRaw + '" is not in the captured table; the page renders no test section.'));
+    }
+    if (typeRaw === null) {
+      issues.push(issue('error', 'truncated_field', 'report_type',
+        'Report type code is missing; the page renders no test section.'));
+    }
+
+    var battery = {
+      visible: typeKnown && REPORT_TYPES[typeRaw].sections.indexOf('battery') >= 0,
+      technology: codeField(payload, SLICES.battery_type, LOCALES.en.battery_type, resolved, 'battery.technology', issues, 'battery_type'),
+      standard: codeField(payload, SLICES.standard, STANDARDS, resolved, 'battery.standard', issues, 'standard'),
+      verdict: codeField(payload, SLICES.battery_result, LOCALES.en.battery_result, resolved, 'battery.verdict', issues, 'battery_result'),
+      soc_percent: percentField(payload, SLICES.soc, 'battery.soc', issues),
+      soh_percent: percentField(payload, SLICES.soh, 'battery.soh', issues),
+      measured_a: numericField(payload, SLICES.measured, 0, 'A', 'battery.measured', issues),
+      voltage_v: numericField(payload, SLICES.voltage, 100, 'V', 'battery.voltage', issues),
+      resistance_mohm: numericField(payload, SLICES.resistance, 100, 'mΩ', 'battery.resistance', issues),
+      rated: null
+    };
+
+    // RATED is display-dependent: JIS uses a designation table and no unit;
+    // GB is shown with Ah; every other/unknown standard is shown with A.
+    var ratedRaw = sliceRaw(payload, SLICES.rated);
+    var ratedComplete = sliceComplete(payload, SLICES.rated);
+    var ratedParsed = parseIntCompat(ratedRaw);
+    var ratedInvalid = Number.isNaN(ratedParsed);
+    var standardCode = battery.standard.code;
+    var ratedUnit = standardCode === '2' ? null : (standardCode === '5' ? 'Ah' : 'A');
+    var jisDesignation = null;
+    var ratedDisplay;
+    if (standardCode === '2') {
+      if (!ratedInvalid && ratedParsed >= 0 && ratedParsed < JIS_VALUES.length) {
+        jisDesignation = JIS_VALUES[ratedParsed];
+        ratedDisplay = jisDesignation;
+      } else {
+        ratedDisplay = '';
+        issues.push(issue('warning', 'jis_index_out_of_range', 'battery.rated',
+          'JIS index ' + (ratedInvalid ? 'NaN' : ratedParsed) + ' has no designation in the captured table; the page renders RATED blank.'));
+      }
+    } else {
+      ratedDisplay = numberDisplay(ratedParsed) + ' ' + ratedUnit;
+    }
+    battery.rated = {
+      raw: ratedRaw,
+      raw_complete: ratedComplete,
+      value: ratedInvalid ? null : ratedParsed,
+      invalid: ratedInvalid,
+      missing: !ratedComplete,
+      decimal: ratedRaw !== null && /^[0-9]+$/.test(ratedRaw),
+      parse: 'js-parseInt',
+      unit: ratedUnit,
+      jis_designation: jisDesignation,
+      display: ratedDisplay
+    };
+    if (!ratedComplete) {
+      issues.push(issue('error', 'truncated_field', 'battery.rated',
+        'Field battery.rated is not fully present in this payload.'));
+    }
+    if (ratedComplete && ratedRaw !== null && !/^[0-9]+$/.test(ratedRaw)) {
+      issues.push(issue('warning', 'non_decimal_numeric', 'battery.rated',
+        'Field battery.rated is not plain decimal ("' + ratedRaw + '"); the captured page uses parseInt().'));
+    }
+    if (ratedComplete && ratedInvalid) {
+      issues.push(issue('warning', 'invalid_number', 'battery.rated',
+        'Field battery.rated ("' + ratedRaw + '") converts to NaN in the captured page.'));
+    }
+
+    var cranking = {
+      visible: typeKnown && REPORT_TYPES[typeRaw].sections.indexOf('cranking') >= 0,
+      verdict: codeField(payload, SLICES.cranking_result, LOCALES.en.cranking_result, resolved, 'cranking.verdict', issues, 'cranking_result'),
+      voltage_v: numericField(payload, SLICES.cranking_voltage, 100, 'V', 'cranking.voltage', issues),
+      duration_ms: numericField(payload, SLICES.cranking_duration, 0, 'ms', 'cranking.duration', issues)
+    };
+
+    var charging = {
+      visible: typeKnown && REPORT_TYPES[typeRaw].sections.indexOf('charging') >= 0,
+      verdict: codeField(payload, SLICES.charging_result, LOCALES.en.charging_result, resolved, 'charging.verdict', issues, 'charging_result'),
+      unloaded_v: numericField(payload, SLICES.charging_unloaded, 100, 'V', 'charging.unloaded', issues),
+      loaded_v: numericField(payload, SLICES.charging_loaded, 100, 'V', 'charging.loaded', issues),
+      ripple_mv: numericField(payload, SLICES.charging_ripple, 0, 'mV', 'charging.ripple', issues)
+    };
+
+    var vehicle = codeField(payload, SLICES.vehicle_type, LOCALES.en.vehicle_type, resolved, 'vehicle_type', issues, 'vehicle_type');
+    vehicle.display = vehicle.known ? (vehicle.label_localized || vehicle.label) : (vehicle.missing ? '' : 'carType_' + vehicle.code);
+
+    var reservedRaw = sliceRaw(payload, SLICES.reserved);
+    var reservedComplete = sliceComplete(payload, SLICES.reserved);
+    if (!reservedComplete) {
+      issues.push(issue('error', 'truncated_field', 'reserved',
+        'Reserved slice [36,38) is not fully present.'));
+    } else if (reservedRaw !== '00') {
+      issues.push(issue('info', 'reserved_nonzero', 'reserved',
+        'Reserved slice [36,38) is "' + reservedRaw + '" instead of "00". The captured renderer never reads it; its meaning is unknown.'));
+    }
+
+    issues.push(issue('info', 'timestamp_not_encoded', 'time',
+      'The d payload contains no date or time. The captured page displays the current browser-local time at page load (or a user-edited date carried in u), so TIME is not the measurement time.'));
+    issues.push(issue('info', 'verdict_reported_not_computed', 'verdict',
+      'Verdict labels are tester-reported codes decoded from the payload. The tester diagnostic algorithm is not reconstructed.'));
+    issues.push(issue('info', 'no_checksum', 'payload',
+      'The captured renderer validates no checksum and no payload length. Presence or absence of a tester-side checksum is unknown.'));
+
+    var reportType = {
+      code: typeRaw,
+      raw: typeRaw,
+      known: typeKnown,
+      name: typeKnown ? REPORT_TYPES[typeRaw].name : null,
+      sections: typeKnown ? REPORT_TYPES[typeRaw].sections.slice() : [],
+      vendor_display: typeKnown ? REPORT_TYPES[typeRaw].name : null
+    };
+
+    var lang = {
+      code: langRaw,
+      raw: langRaw,
+      known: langRaw !== null && has(LANGUAGES, langRaw),
+      resolved: resolved,
+      name: LANGUAGE_NAMES[resolved] || resolved,
+      available_in_selector: ['en', 'de', 'fr', 'pl', 'it', 'gr', 'pt', 'fi', 'se', 'cz', 'dk', 'bg', 'hr', 'es'].indexOf(resolved) >= 0
+    };
+
+    return {
+      decoder: {
+        name: 'usbd1-qr-decoder',
+        version: '1.0.0',
+        format_id: FORMAT_ID,
+        parse_mode: 'js-parseInt',
+        behavior_verified: true
+      },
+      input: {
+        kind: parsed.kind,
+        raw: parsed.raw,
+        url: parsed.url,
+        payload: payload,
+        payload_length: payload.length,
+        d_count: parsed.d_count,
+        has_u: parsed.has_u,
+        query_keys: parsed.query_keys
+      },
+      format: {
+        id: FORMAT_ID,
+        expected_length: EXPECTED_LENGTH,
+        actual_length: payload.length,
+        length_ok: lengthOk,
+        supported: lengthOk,
+        checksum: null,
+        checksum_status: 'none-in-captured-renderer'
+      },
+      ok: !issues.some(function (i) { return i.severity === 'error'; }),
+      report_type: reportType,
+      language: lang,
+      battery: battery,
+      cranking: cranking,
+      charging: charging,
+      vehicle_type: vehicle,
+      reserved: {
+        raw: reservedRaw,
+        complete: reservedComplete,
+        note: 'Not read by the captured renderer; semantics unknown.'
+      },
+      display_time: {
+        encoded_in_payload: false,
+        value: null,
+        source: 'not-available',
+        explanation: 'The captured page sets TIME from new Date() in the browser at page load, or from an opaque u query parameter. Neither is part of the QR payload.'
+      },
+      raw_slices: rawSlices(payload),
+      issues: issues
+    };
+  }
+
+  function rawSlices(payload) {
+    var out = {};
+    for (var k in SLICES) if (has(SLICES, k)) out[k] = sliceRaw(payload, SLICES[k]);
+    return out;
+  }
+
+  function emptyResult(parsed, issues) {
+    return {
+      decoder: { name: 'usbd1-qr-decoder', version: '1.0.0', format_id: FORMAT_ID, parse_mode: 'js-parseInt', behavior_verified: true },
+      input: {
+        kind: parsed.kind, raw: parsed.raw, url: parsed.url, payload: null,
+        payload_length: 0, d_count: parsed.d_count, has_u: parsed.has_u, query_keys: parsed.query_keys
+      },
+      format: { id: FORMAT_ID, expected_length: EXPECTED_LENGTH, actual_length: 0, length_ok: false, supported: false, checksum: null, checksum_status: 'none-in-captured-renderer' },
+      ok: false,
+      report_type: { code: null, raw: null, known: false, name: null, sections: [], vendor_display: null },
+      language: { code: null, raw: null, known: false, resolved: 'en', name: 'English', available_in_selector: true },
+      battery: null, cranking: null, charging: null, vehicle_type: null,
+      reserved: { raw: null, complete: false, note: 'Not read by the captured renderer; semantics unknown.' },
+      display_time: { encoded_in_payload: false, value: null, source: 'not-available', explanation: 'No payload was supplied.' },
+      raw_slices: rawSlices(null),
+      issues: issues
+    };
+  }
+
+  function toRows(result) {
+    if (!result || !result.battery) return [];
+    var rows = [];
+    var lang = result.language.resolved;
+    function add(group, label, field, code, note) {
+      rows.push({ group: group, label: label, value: field ? field.display : '', raw: field ? field.raw : null, code: code || null, note: note || null });
+    }
+    function codeDisplay(f) {
+      if (!f) return '';
+      if (f.known) return f.label_localized || f.label || '';
+      if (f.vendor_fallback) return f.vendor_fallback;
+      return f.label || '';
+    }
+    if (result.battery.visible) {
+      add('Battery Test', 'Battery technology', { display: codeDisplay(result.battery.technology), raw: result.battery.technology.raw }, result.battery.technology.code);
+      add('Battery Test', 'Verdict (tester-reported)', { display: codeDisplay(result.battery.verdict), raw: result.battery.verdict.raw }, result.battery.verdict.code);
+      add('Battery Test', 'SoH', result.battery.soh_percent);
+      add('Battery Test', 'SoC', result.battery.soc_percent);
+      add('Battery Test', 'Measured', result.battery.measured_a);
+      add('Battery Test', 'Voltage', result.battery.voltage_v);
+      add('Battery Test', 'Standard', { display: result.battery.standard.label || '', raw: result.battery.standard.raw }, result.battery.standard.code);      add('Battery Test', 'Rated', result.battery.rated);
+      add('Battery Test', 'Resistance', result.battery.resistance_mohm);
+    }
+    if (result.cranking.visible) {
+      add('Cranking Test', 'Verdict (tester-reported)', { display: codeDisplay(result.cranking.verdict), raw: result.cranking.verdict.raw }, result.cranking.verdict.code);
+      add('Cranking Test', 'Cranking voltage', result.cranking.voltage_v);
+      add('Cranking Test', 'Duration', result.cranking.duration_ms);
+    }
+    if (result.charging.visible) {
+      add('Charging Test', 'Verdict (tester-reported)', { display: codeDisplay(result.charging.verdict), raw: result.charging.verdict.raw }, result.charging.verdict.code);
+      add('Charging Test', 'Unloaded', result.charging.unloaded_v);
+      add('Charging Test', 'Loaded', result.charging.loaded_v);
+      add('Charging Test', 'Ripple', result.charging.ripple_mv);
+    }
+    add('Report', 'Vehicle type', { display: result.vehicle_type.display, raw: result.vehicle_type.raw }, result.vehicle_type.code);
+    rows.push({ group: 'Report', label: 'Report type', value: result.report_type.name || 'Unknown', raw: result.report_type.code, code: result.report_type.code, note: null });
+    rows.push({ group: 'Report', label: 'Language', value: result.language.name, raw: result.language.code, code: result.language.code, note: null });
+    rows.push({ group: 'Report', label: 'Reserved [36,38)', value: result.reserved.raw, raw: result.reserved.raw, code: null, note: result.reserved.note });
+    rows.push({ group: 'Report', label: 'TIME', value: 'not encoded', raw: null, code: null, note: result.display_time.explanation });
+    return rows;
+  }
+
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  }
+
+  function toMarkdown(result) {
+    var lines = [];
+    if (!result || !result.input || result.input.payload === null) {
+      lines.push('# USBD1 A1 report');
+      lines.push('');
+      lines.push('**Error:** ' + ((result.issues[0] && result.issues[0].message) || 'no payload'));
+      return lines.join('\n') + '\n';
+    }
+    lines.push('# USBD1 A1 report');
+    lines.push('');
+    lines.push('- Payload: `' + result.input.payload + '`');
+    lines.push('- Length: ' + result.input.payload_length + ' (expected ' + result.format.expected_length + ')');
+    lines.push('- Report type: ' + (result.report_type.name || 'Unknown') + ' (code ' + (result.report_type.code === null ? 'missing' : '`' + result.report_type.code + '`') + ')');
+    lines.push('- Language: ' + result.language.name + ' (code ' + (result.language.code === null ? 'missing' : '`' + result.language.code + '`') + ', resolved `' + result.language.resolved + '`)');
+    lines.push('- Tester-reported verdicts; diagnostic algorithm not reconstructed.');
+    lines.push('');
+    lines.push('| Group | Field | Value | Raw | Code |');
+    lines.push('|---|---|---|---|---|');
+    var rows = toRows(result);
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      lines.push('| ' + esc(r.group) + ' | ' + esc(r.label) + ' | ' + esc(r.value) + ' | ' + esc(r.raw) + ' | ' + esc(r.code) + ' |');
+    }
+    lines.push('');
+    lines.push('## TIME');
+    lines.push('');
+    lines.push(result.display_time.explanation);
+    lines.push('');
+    lines.push('## Issues');
+    lines.push('');
+    if (!result.issues.length) lines.push('None.');
+    for (var j = 0; j < result.issues.length; j++) {
+      var it = result.issues[j];
+      lines.push('- **' + it.severity + '** `' + it.code + '`' + (it.field ? ' (' + it.field + ')' : '') + ': ' + it.message);
+    }
+    lines.push('');
+    lines.push('---');
+    lines.push('Decoded by usbd1-qr-decoder ' + result.decoder.version + '; format ' + result.decoder.format_id + '.');
+    return lines.join('\n') + '\n';
+  }
+
+  return {
+    FORMAT_ID: FORMAT_ID,
+    EXPECTED_LENGTH: EXPECTED_LENGTH,
+    SLICES: SLICES,
+    STANDARDS: STANDARDS,
+    LANGUAGES: LANGUAGES,
+    LANGUAGE_NAMES: LANGUAGE_NAMES,
+    JIS_VALUES: JIS_VALUES,
+    REPORT_TYPES: REPORT_TYPES,
+    parseInput: parseInput,
+    decode: decode,
+    toRows: toRows,
+    toMarkdown: toMarkdown
+  };
+});
+
+</script>
+<script>
+/* Browser UI for decoder.html / index.html. No dependencies, no network. */
+(function () {
+  'use strict';
+  var lib = window.USBD1;
+  var current = null;
+
+  var input = document.getElementById('input');
+  var decodeBtn = document.getElementById('decode');
+  var pasteBtn = document.getElementById('paste');
+  var clearBtn = document.getElementById('clear');
+  var sampleWrap = document.getElementById('samples');
+  var output = document.getElementById('output');
+  var exportBar = document.getElementById('export-bar');
+  var inputStatus = document.getElementById('input-status');
+  var themeBtn = document.getElementById('theme');
+  var downloadJsonBtn = document.getElementById('download-json');
+  var downloadMdBtn = document.getElementById('download-md');
+  var copyJsonBtn = document.getElementById('copy-json');
+  var copyMdBtn = document.getElementById('copy-md');
+  var shareLinkBtn = document.getElementById('share-link');
+
+  var SAMPLES = [
+    { label: 'Battery · EFB', value: 'https://e.dh5z.com/?d=50510126103663109505100606200000000000000000000000021' },
+    { label: 'Cranking · NORMAL', value: 'https://e.dh5z.com/?d=00000000000000000000000000010603580100000000000000022' },
+    { label: 'Public · Polish AGM', value: 'https://e.dh5z.com/?d=207601253061833083066003592000000000000000000000000c1' },
+    { label: 'Warnings demo · 52 chars', value: '5051012610366310950510060620000000000000000000000002' }
+  ];
+
+  var ICONS = {
+    check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.2 4.2L19 6.5"/></svg>',
+    alert: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.2 21h19.6L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2h.01"/></svg>',
+    x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>',
+    clock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    chevron: '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>',
+    sun: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    moon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>',
+    battery: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="2.5" y="7" width="16.5" height="10" rx="2.5"/><path d="M22 10.5v3"/><path d="M6.5 10.5v3M10 10.5v3M13.5 10.5v3"/></svg>',
+    bolt: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>',
+    plug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0V8Z"/><path d="M12 17v5"/></svg>'
+  };
+
+  function el(tag, attrs, children) {
+    var e = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        var v = attrs[k];
+        if (v === null || v === undefined || v === false) return;
+        if (k === 'class') e.className = v;
+        else if (k === 'text') e.textContent = v;
+        else if (k === 'html') e.innerHTML = v;
+        else if (k === 'style') e.setAttribute('style', v);
+        else if (v === true) e.setAttribute(k, '');
+        else e.setAttribute(k, v);
+      });
+    }
+    (children || []).forEach(function (c) { if (c) e.appendChild(c); });
+    return e;
+  }
+
+  function icon(name, cls) {
+    return el('span', { class: cls || '', html: ICONS[name] || '', 'aria-hidden': 'true' });
+  }
+
+  function codeLabel(field) {
+    if (!field) return '—';
+    if (field.known) return field.label_localized || field.label || '—';
+    return field.vendor_fallback || ('Unknown code ' + field.code);
+  }
+
+  function toneForBattery(code) {
+    if (code === '1') return 'good';
+    if (code === '2') return 'warn';
+    if (code === '3') return 'info';
+    if (code === '4') return 'warn';
+    if (code === '5') return 'bad';
+    return 'neutral';
+  }
+  function toneForCranking(code) {
+    if (code === '1') return 'good';
+    if (code === '2' || code === '3') return 'warn';
+    if (code === '0') return 'neutral';
+    return 'bad';
+  }
+  function toneForCharging(code) {
+    if (code === '1') return 'good';
+    if (code === '2' || code === '3') return 'warn';
+    if (code === '0') return 'neutral';
+    return 'bad';
+  }
+
+  function statusOf(r) {
+    if (!r.input || r.input.payload === null) return { tone: 'bad', label: 'No payload' };
+    if (!r.format.supported) return { tone: 'bad', label: 'Unsupported length' };
+    if (!r.ok) return { tone: 'bad', label: 'Decode error' };
+    var warnings = r.issues.filter(function (i) { return i.severity === 'warning'; });
+    if (warnings.length) return { tone: 'warn', label: 'Decoded with warnings' };
+    return { tone: 'good', label: 'Verified layout' };
+  }
+
+  function primaryVerdict(r) {
+    if (r.battery && r.battery.visible) {
+      return { section: 'Battery Test', field: r.battery.verdict, tone: toneForBattery(r.battery.verdict.code) };
+    }
+    if (r.cranking && r.cranking.visible) {
+      return { section: 'Cranking Test', field: r.cranking.verdict, tone: toneForCranking(r.cranking.verdict.code) };
+    }
+    if (r.charging && r.charging.visible) {
+      return { section: 'Charging Test', field: r.charging.verdict, tone: toneForCharging(r.charging.verdict.code) };
+    }
+    return null;
+  }
+
+  function otherVerdicts(r, primary) {
+    var out = [];
+    if (r.cranking && r.cranking.visible && (!primary || primary.section !== 'Cranking Test')) {
+      out.push({ section: 'Cranking Test', field: r.cranking.verdict, tone: toneForCranking(r.cranking.verdict.code) });
+    }
+    if (r.charging && r.charging.visible && (!primary || primary.section !== 'Charging Test')) {
+      out.push({ section: 'Charging Test', field: r.charging.verdict, tone: toneForCharging(r.charging.verdict.code) });
+    }
+    return out;
+  }
+
+  function statusPill(status) {
+    return el('span', { class: 'status-pill ' + status.tone }, [
+      el('span', { class: 'dot' }),
+      document.createTextNode(status.label)
+    ]);
+  }
+
+  function metaPill(label, value) {
+    if (!value || value === '—') return null;
+    return el('span', { class: 'meta-pill' }, [
+      el('span', { class: 'mono', text: label }),
+      document.createTextNode(' ' + value)
+    ]);
+  }
+
+  function hex(code) {
+    return code === null || code === undefined ? 'missing' : code;
+  }
+
+  function hero(r, primary, status) {
+    var tone = primary ? primary.tone : 'neutral';
+    var card = el('section', { class: 'hero card tone-' + tone });
+    var main = el('div', { class: 'hero-main' });
+    main.appendChild(el('div', { class: 'eyebrow', text: primary ? primary.section + ' · tester-reported' : 'Report' }));
+    main.appendChild(el('h2', { text: primary ? codeLabel(primary.field) : 'No test section' }));
+
+    var meta = el('div', { class: 'hero-meta' });
+    if (r.battery && r.battery.visible) {
+      var t = metaPill('Technology', codeLabel(r.battery.technology));
+      if (t) meta.appendChild(t);
+      var rated = metaPill('Rated', r.battery.rated.display);
+      if (rated) meta.appendChild(rated);
+    }
+    var veh = metaPill('Vehicle', r.vehicle_type.display);
+    if (veh) meta.appendChild(veh);
+    meta.appendChild(metaPill('Language', r.language.name));
+    main.appendChild(meta);
+
+    var side = el('div', { class: 'hero-side' });
+    side.appendChild(statusPill(status));
+    if (primary) side.appendChild(el('span', { class: 'hero-code', text: 'verdict code ' + hex(primary.field.code) }));
+    side.appendChild(el('span', { class: 'hero-code', text: 'payload ' + r.format.actual_length + ' / ' + r.format.expected_length }));
+    card.appendChild(main);
+    card.appendChild(side);
+    return card;
+  }
+
+  function verdictStrip(items) {
+    var wrap = el('div', { class: 'verdict-strip' });
+    items.forEach(function (item) {
+      var tone = item.tone;
+      var card = el('div', { class: 'verdict-card tone-' + tone });
+      card.appendChild(icon(tone === 'good' ? 'check' : (tone === 'bad' ? 'x' : 'alert'), 'verdict-icon'));
+      var copy = el('div', { class: 'verdict-copy' });
+      copy.appendChild(el('span', { text: item.section }));
+      copy.appendChild(el('strong', { text: codeLabel(item.field) }));
+      card.appendChild(copy);
+      card.appendChild(el('span', { class: 'verdict-code', text: 'code ' + hex(item.field.code) }));
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
+  function splitValue(field) {
+    if (!field) return { main: '—', unit: '' };
+    if (field.missing) return { main: '—', unit: field.unit || '' };
+    var text = String(field.display === null || field.display === undefined ? '' : field.display);
+    if (!text) return { main: '—', unit: field.unit || '' };
+    if (field.unit === '%' && text.charAt(text.length - 1) === '%') {
+      return { main: text.slice(0, -1), unit: '%' };
+    }
+    if (field.unit && text.length > field.unit.length + 1 && text.slice(-(field.unit.length + 1)) === ' ' + field.unit) {
+      return { main: text.slice(0, -(field.unit.length + 1)), unit: field.unit };
+    }
+    return { main: text, unit: '' };
+  }
+
+  function statCard(label, field, note) {
+    var card = el('div', { class: 'stat-card card' });
+    card.appendChild(el('span', { class: 'stat-label', text: label }));
+    var v = splitValue(field);
+    var strong = el('strong', { class: 'stat-value' });
+    strong.appendChild(document.createTextNode(v.main));
+    if (v.unit) {
+      strong.appendChild(document.createTextNode(' '));
+      strong.appendChild(el('small', { text: v.unit }));
+    }
+    card.appendChild(strong);
+    var rawText = field && field.raw !== null ? 'raw ' + field.raw : 'missing';
+    if (field && field.invalid && !field.missing) rawText += ' · invalid';
+    card.appendChild(el('span', { class: 'stat-raw', text: rawText }));
+    if (note) card.appendChild(el('div', { class: 'stat-note', text: note }));
+    if (field && field.missing) card.classList.add('tone-warn');
+    return card;
+  }
+
+  function gaugeCard(label, sublabel, field, toneVar) {
+    var value = field && field.value !== null && !field.invalid ? Number(field.value) : null;
+    var pct = value === null ? 0 : Math.max(0, Math.min(100, value));
+    var display = value === null ? '—' : String(value);
+    var card = el('div', { class: 'gauge-card card' });
+    var gauge = el('div', { class: 'gauge', role: 'img', 'aria-label': label + ': ' + (value === null ? 'not available' : display + '%'), style: '--pct:' + pct + ';--tone:var(--' + toneVar + ')' });
+    var inner = el('div', { class: 'gauge-label' });
+    inner.appendChild(el('strong', { text: value === null ? '—' : display + '%' }));
+    gauge.appendChild(inner);
+    card.appendChild(gauge);
+    var copy = el('div', { class: 'gauge-copy' });
+    copy.appendChild(el('h4', { text: label }));
+    copy.appendChild(el('p', { text: value === null ? 'Not available in this payload' : sublabel }));
+    if (field) {
+      var rawText = field.raw === null ? 'missing' : ('raw ' + field.raw);
+      if (field.invalid && !field.missing) rawText += ' · invalid';
+      if (value !== null && (value < 0 || value > 100)) rawText += ' · outside 0–100';
+      copy.appendChild(el('span', { class: 'raw', text: rawText }));
+    }
+    card.appendChild(copy);
+    return card;
+  }
+
+  function sectionHead(title, note) {
+    return el('div', { class: 'section-head' }, [
+      el('h3', { text: title }),
+      el('span', { text: note || '' })
+    ]);
+  }
+
+  function batterySection(r) {
+    var wrap = el('section', { class: 'report-enter' });
+    wrap.appendChild(sectionHead('Battery measurements', 'tester-reported values'));
+    var metrics = el('div', { class: 'metrics' });
+    metrics.appendChild(gaugeCard('State of health', 'SoH from the tester', r.battery.soh_percent, 'accent'));
+    metrics.appendChild(gaugeCard('State of charge', 'SoC from the tester', r.battery.soc_percent, 'info'));
+    wrap.appendChild(metrics);
+    var stats = el('div', { class: 'stat-grid' });
+    stats.appendChild(statCard('Measured current', r.battery.measured_a));
+    stats.appendChild(statCard('Battery voltage', r.battery.voltage_v));
+    stats.appendChild(statCard('Internal resistance', r.battery.resistance_mohm));
+    var ratedNote = r.battery.standard.code === '2' ? 'JIS designation; the raw value is an index' : (r.battery.standard.code === '5' ? 'Displayed with Ah by the captured page' : null);
+    stats.appendChild(statCard('Rated', r.battery.rated, ratedNote));
+    wrap.appendChild(stats);
+    return wrap;
+  }
+
+  function crankingSection(r) {
+    var wrap = el('section', { class: 'report-enter' });
+    wrap.appendChild(sectionHead('Cranking measurements', 'tester-reported values'));
+    var stats = el('div', { class: 'stat-grid' });
+    stats.appendChild(statCard('Cranking voltage', r.cranking.voltage_v));
+    stats.appendChild(statCard('Duration', r.cranking.duration_ms));
+    wrap.appendChild(stats);
+    return wrap;
+  }
+
+  function chargingSection(r) {
+    var wrap = el('section', { class: 'report-enter' });
+    wrap.appendChild(sectionHead('Charging measurements', 'tester-reported values'));
+    var stats = el('div', { class: 'stat-grid' });
+    stats.appendChild(statCard('Unloaded voltage', r.charging.unloaded_v));
+    stats.appendChild(statCard('Loaded voltage', r.charging.loaded_v));
+    stats.appendChild(statCard('Ripple', r.charging.ripple_mv));
+    wrap.appendChild(stats);
+    return wrap;
+  }
+
+  function detail(label, value, code, raw) {
+    var item = el('div', { class: 'detail' });
+    item.appendChild(el('span', { text: label }));
+    item.appendChild(el('strong', { text: value || '—' }));
+    var bits = [];
+    if (code !== null && code !== undefined) bits.push('code ' + code);
+    if (raw !== null && raw !== undefined) bits.push('raw ' + raw);
+    if (bits.length) item.appendChild(el('em', { text: bits.join(' · ') }));
+    return item;
+  }
+
+  function detailsCard(r) {
+    var card = el('section', { class: 'detail-card card' });
+    card.appendChild(el('div', { class: 'section-head', style: 'margin:0 0 12px' }, [el('h3', { text: 'Report details' })]));
+    var grid = el('div', { class: 'detail-grid' });
+    if (r.battery) {
+      grid.appendChild(detail('Battery technology', codeLabel(r.battery.technology), r.battery.technology.code, r.battery.technology.raw));
+      grid.appendChild(detail('Rating standard', r.battery.standard.known ? r.battery.standard.label : 'Unknown', r.battery.standard.code, r.battery.standard.raw));
+    }
+    grid.appendChild(detail('Vehicle type', r.vehicle_type.display, r.vehicle_type.code, r.vehicle_type.raw));
+    grid.appendChild(detail('Report type', r.report_type.name || 'Unknown', r.report_type.code, r.report_type.raw));
+    grid.appendChild(detail('Language', r.language.name + ' (' + r.language.resolved + ')', r.language.code, r.language.raw));
+    grid.appendChild(detail('Payload length', r.format.actual_length + ' / ' + r.format.expected_length, null, null));
+    grid.appendChild(detail('Checksum', 'Not checked by the page', null, null));
+    if (r.reserved && r.reserved.raw !== null) grid.appendChild(detail('Reserved [36,38)', r.reserved.raw, null, r.reserved.raw));
+    card.appendChild(grid);
+    return card;
+  }
+
+  function timeCallout(r) {
+    var box = el('div', { class: 'callout' });
+    box.appendChild(icon('clock', 'callout-icon'));
+    var copy = el('div');
+    copy.appendChild(el('strong', { text: 'TIME is not encoded in the QR payload' }));
+    copy.appendChild(el('p', { text: r.display_time.explanation }));
+    box.appendChild(copy);
+    return box;
+  }
+
+  function issueCard(r) {
+    var problems = r.issues.filter(function (i) { return i.severity !== 'info'; });
+    var notes = r.issues.filter(function (i) { return i.severity === 'info'; });
+    var frag = document.createDocumentFragment();
+    if (problems.length) {
+      var card = el('section', { class: 'detail-card card' });
+      card.appendChild(el('div', { class: 'section-head', style: 'margin:0 0 12px' }, [el('h3', { text: 'Checks' })]));
+      var ul = el('ul', { class: 'issues' });
+      problems.forEach(function (i) {
+        var li = el('li', { class: 'issue' });
+        li.appendChild(el('span', { class: 'badge ' + i.severity, text: i.severity }));
+        var text = el('div', { class: 'issue-text' });
+        text.appendChild(document.createTextNode(i.message + ' '));
+        text.appendChild(el('code', { text: i.code + (i.field ? ' · ' + i.field : '') }));
+        li.appendChild(text);
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
+      frag.appendChild(card);
+    }
+    if (notes.length) {
+      var det = el('details', { class: 'card raw-card' });
+      var summary = el('summary');
+      summary.appendChild(el('span', { text: 'Notes (' + notes.length + ')' }));
+      summary.appendChild(el('span', { html: ICONS.chevron }));
+      det.appendChild(summary);
+      var body = el('div', { class: 'raw-body' });
+      var list = el('ul', { class: 'issues' });
+      notes.forEach(function (i) {
+        var li = el('li', { class: 'issue' });
+        li.appendChild(el('span', { class: 'badge info', text: 'info' }));
+        var text = el('div', { class: 'issue-text' });
+        text.appendChild(document.createTextNode(i.message));
+        li.appendChild(text);
+        list.appendChild(li);
+      });
+      body.appendChild(list);
+      det.appendChild(body);
+      frag.appendChild(det);
+    }
+    return frag;
+  }
+
+  function fieldMap(r) {
+    return [
+      ['battery_type', 'Battery technology', r.battery ? codeLabel(r.battery.technology) : '—'],
+      ['rated', 'Rated', r.battery ? r.battery.rated.display : '—'],
+      ['voltage', 'Voltage', r.battery ? r.battery.voltage_v.display : '—'],
+      ['measured', 'Measured', r.battery ? r.battery.measured_a.display : '—'],
+      ['standard', 'Standard', r.battery ? (r.battery.standard.label || 'unknown') : '—'],
+      ['battery_result', 'Battery verdict', r.battery ? codeLabel(r.battery.verdict) : '—'],
+      ['soc', 'SoC', r.battery ? r.battery.soc_percent.display : '—'],
+      ['soh', 'SoH', r.battery ? r.battery.soh_percent.display : '—'],
+      ['resistance', 'Resistance', r.battery ? r.battery.resistance_mohm.display : '—'],
+      ['vehicle_type', 'Vehicle type', r.vehicle_type ? r.vehicle_type.display : '—'],
+      ['cranking_voltage', 'Cranking voltage', r.cranking ? r.cranking.voltage_v.display : '—'],
+      ['cranking_duration', 'Cranking duration', r.cranking ? r.cranking.duration_ms.display : '—'],
+      ['cranking_result', 'Cranking verdict', r.cranking ? codeLabel(r.cranking.verdict) : '—'],
+      ['reserved', 'Reserved', 'unused by the captured page'],
+      ['charging_loaded', 'Charging loaded', r.charging ? r.charging.loaded_v.display : '—'],
+      ['charging_unloaded', 'Charging unloaded', r.charging ? r.charging.unloaded_v.display : '—'],
+      ['charging_ripple', 'Charging ripple', r.charging ? r.charging.ripple_mv.display : '—'],
+      ['charging_result', 'Charging verdict', r.charging ? codeLabel(r.charging.verdict) : '—'],
+      ['language', 'Language', r.language ? r.language.name + ' (' + r.language.resolved + ')' : '—'],
+      ['report_type', 'Report type', r.report_type ? (r.report_type.name || 'unknown') : '—']
+    ];
+  }
+
+  function rawCard(r) {
+    var det = el('details', { class: 'raw-card card' });
+    var summary = el('summary');
+    summary.appendChild(el('span', { text: 'Raw payload & field map' }));
+    summary.appendChild(el('span', { html: ICONS.chevron }));
+    det.appendChild(summary);
+    var body = el('div', { class: 'raw-body' });
+    var toolbar = el('div', { class: 'raw-toolbar' });
+    toolbar.appendChild(el('span', { text: r.format.actual_length + ' characters · UTF-16 code units · expected ' + r.format.expected_length }));
+    var copyBtn = el('button', { class: 'btn btn-ghost', type: 'button', style: 'min-height:32px;padding:5px 10px;font-size:12px', text: 'Copy payload' });
+    copyBtn.addEventListener('click', function () {
+      copyText(r.input.payload);
+      flashButton(copyBtn, 'Copied');
+    });
+    toolbar.appendChild(copyBtn);
+    body.appendChild(toolbar);
+    body.appendChild(el('pre', { class: 'payload', text: r.input.payload }));
+    var table = el('table', { class: 'slices' });
+    var thead = el('thead');
+    thead.appendChild(el('tr', null, [
+      el('th', { text: 'Slice' }),
+      el('th', { text: 'Field' }),
+      el('th', { text: 'Raw' }),
+      el('th', { text: 'Decoded' })
+    ]));
+    table.appendChild(thead);
+    var tbody = el('tbody');
+    fieldMap(r).forEach(function (row) {
+      var key = row[0];
+      var range = lib.SLICES[key];
+      var tr = el('tr');
+      tr.appendChild(el('td', { text: '[' + range[0] + ',' + range[1] + ')' }));
+      tr.appendChild(el('td', { text: row[1] }));
+      var raw = r.raw_slices[key];
+      tr.appendChild(el('td', { text: raw === null ? '—' : raw }));
+      tr.appendChild(el('td', { text: row[2] }));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    body.appendChild(table);
+    det.appendChild(body);
+    return det;
+  }
+
+  function renderFatal(r) {
+    exportBar.hidden = false;
+    var card = el('section', { class: 'card detail-card' });
+    var head = el('div', { class: 'section-head', style: 'margin:0 0 12px' }, [el('h3', { text: 'No report payload found' })]);
+    card.appendChild(head);
+    var issue = r.issues && r.issues[0] ? r.issues[0].message : 'The input did not contain a d parameter.';
+    card.appendChild(el('p', { text: issue, style: 'margin:0 0 8px;color:var(--ink-2)' }));
+    card.appendChild(el('p', { text: 'The captured original page throws a TypeError and renders no test section when d is missing. Paste a full report URL or the raw 53-character payload.', style: 'margin:0;color:var(--muted);font-size:13px' }));
+    output.appendChild(card);
+  }
+
+  function render(r) {
+    current = r;
+    output.innerHTML = '';
+    inputStatus.textContent = r.format.actual_length + ' characters · ' + (r.format.supported ? 'supported length' : 'unsupported length');
+    exportBar.hidden = false;
+    if (!r.input || r.input.payload === null) {
+      renderFatal(r);
+      return;
+    }
+    var status = statusOf(r);
+    var primary = primaryVerdict(r);
+    var wrap = el('div', { class: 'report-enter' });
+    if (!r.format.supported) {
+      var banner = el('div', { class: 'callout', style: 'background:var(--bad-soft);border-color:color-mix(in srgb, var(--bad) 25%, var(--line));' });
+      banner.appendChild(el('span', { class: 'callout-icon', style: 'color:var(--bad)', html: ICONS.alert, 'aria-hidden': 'true' }));
+      var bcopy = el('div');
+      bcopy.appendChild(el('strong', { text: 'Unsupported payload length: ' + r.format.actual_length + ' (expected ' + r.format.expected_length + ')' }));
+      bcopy.appendChild(el('p', { text: 'The values below are a best-effort decode using the captured layout. Do not treat them as verified for this firmware.' }));
+      banner.appendChild(bcopy);
+      wrap.appendChild(banner);
+    }
+    wrap.appendChild(hero(r, primary, status));
+    var extra = otherVerdicts(r, primary);
+    if (extra.length) wrap.appendChild(verdictStrip(extra));
+    if (r.battery && r.battery.visible) wrap.appendChild(batterySection(r));
+    if (r.cranking && r.cranking.visible) wrap.appendChild(crankingSection(r));
+    if (r.charging && r.charging.visible) wrap.appendChild(chargingSection(r));
+    wrap.appendChild(detailsCard(r));
+    wrap.appendChild(timeCallout(r));
+    wrap.appendChild(issueCard(r));
+    wrap.appendChild(rawCard(r));
+    output.appendChild(wrap);
+  }
+
+  function decodeNow() {
+    var text = input.value.trim();
+    if (!text) {
+      current = null;
+      output.innerHTML = '';
+      var empty = el('section', { class: 'card empty', id: 'empty-state' });
+      empty.appendChild(el('div', { class: 'glyph', text: '⌁' }));
+      empty.appendChild(el('strong', { text: 'No report decoded yet' }));
+      empty.appendChild(el('p', { text: 'Paste a QR report link above, or try one of the samples.' }));
+      output.appendChild(empty);
+      exportBar.hidden = true;
+      inputStatus.textContent = 'Waiting for a report…';
+      return;
+    }
+    try {
+      render(lib.decode(text));
+    } catch (e) {
+      current = null;
+      output.innerHTML = '';
+      var card = el('section', { class: 'card detail-card' });
+      card.appendChild(el('h3', { text: 'Decoder error', style: 'margin:0 0 8px' }));
+      card.appendChild(el('p', { text: e && e.message ? e.message : String(e) }));
+      output.appendChild(card);
+      exportBar.hidden = true;
+      inputStatus.textContent = 'Decoder error';
+    }
+  }
+
+  function updateInputStatus() {
+    var text = input.value.trim();
+    if (!text) { inputStatus.textContent = 'Waiting for a report…'; return; }
+    if (/^https?:\/\//i.test(text)) {
+      inputStatus.textContent = 'URL detected · ' + text.length + ' characters';
+    } else if (/d=/.test(text)) {
+      inputStatus.textContent = 'Query detected · ' + text.length + ' characters';
+    } else {
+      inputStatus.textContent = 'Payload · ' + text.length + ' characters';
+    }
+  }
+
+  function download(name, text, mime) {
+    var blob = new Blob([text], { type: mime });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  function safeName() {
+    var p = current && current.input && current.input.payload ? current.input.payload.slice(0, 12) : 'report';
+    return 'usbd1-report-' + p;
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
+    }
+    fallbackCopy(text);
+    return Promise.resolve();
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+  }
+
+  function flashButton(btn, label) {
+    if (!btn) return;
+    var old = btn.textContent;
+    btn.textContent = label;
+    setTimeout(function () { btn.textContent = old; }, 1400);
+  }
+
+  function shareLink() {
+    if (!current || !current.input || !current.input.payload) return null;
+    var base;
+    if (location.protocol === 'file:') {
+      base = location.href.split('?')[0].split('#')[0];
+    } else {
+      base = location.origin + location.pathname;
+    }
+    return base + '?d=' + encodeURIComponent(current.input.payload);
+  }
+
+  function currentTheme() {
+    var stored = document.documentElement.dataset.theme;
+    if (stored === 'light' || stored === 'dark') return stored;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem('usbd1-theme', theme); } catch (e) {}
+    themeBtn.innerHTML = theme === 'dark' ? ICONS.sun : ICONS.moon;
+    themeBtn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    themeBtn.setAttribute('title', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+
+  // Wire up
+  decodeBtn.addEventListener('click', decodeNow);
+  input.addEventListener('input', updateInputStatus);
+  input.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') decodeNow();
+  });
+  input.addEventListener('paste', function () {
+    setTimeout(decodeNow, 0);
+  });
+  pasteBtn.addEventListener('click', function () {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function (text) {
+        if (text) { input.value = text; decodeNow(); }
+        else { input.focus(); }
+      }).catch(function () {
+        input.focus();
+        inputStatus.textContent = 'Press Ctrl/Cmd+V to paste';
+      });
+    } else {
+      input.focus();
+      inputStatus.textContent = 'Press Ctrl/Cmd+V to paste';
+    }
+  });
+  clearBtn.addEventListener('click', function () {
+    input.value = '';
+    current = null;
+    decodeNow();
+    input.focus();
+  });
+  SAMPLES.forEach(function (s) {
+    var b = el('button', { class: 'sample', type: 'button', text: s.label });
+    b.addEventListener('click', function () {
+      input.value = s.value;
+      decodeNow();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    sampleWrap.appendChild(b);
+  });
+  downloadJsonBtn.addEventListener('click', function () {
+    if (current) download(safeName() + '.json', JSON.stringify(current, null, 2), 'application/json');
+  });
+  downloadMdBtn.addEventListener('click', function () {
+    if (current) download(safeName() + '.md', lib.toMarkdown(current), 'text/markdown');
+  });
+  copyJsonBtn.addEventListener('click', function () {
+    if (current) { copyText(JSON.stringify(current, null, 2)); flashButton(copyJsonBtn, 'Copied'); }
+  });
+  copyMdBtn.addEventListener('click', function () {
+    if (current) { copyText(lib.toMarkdown(current)); flashButton(copyMdBtn, 'Copied'); }
+  });
+  shareLinkBtn.addEventListener('click', function () {
+    var url = shareLink();
+    if (url) { copyText(url); flashButton(shareLinkBtn, 'Link copied'); }
+  });
+  themeBtn.addEventListener('click', function () {
+    applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+  });
+
+  // Initial theme icon
+  applyTheme(currentTheme());
+
+  // Auto-fill from ?d= or #d= / #?d=
+  var auto = '';
+  try {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('d')) auto = window.location.search;
+    else if (window.location.hash) {
+      var h = window.location.hash.replace(/^#/, '');
+      if (h.indexOf('d=') >= 0) auto = h.indexOf('?') === 0 ? h : '?' + h;
+    }
+  } catch (e) {}
+  if (auto) {
+    input.value = auto;
+    decodeNow();
+  } else {
+    input.focus();
+    updateInputStatus();
+  }
+})();
+
+</script>
+</body>
+</html>

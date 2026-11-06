@@ -1,0 +1,39 @@
+# NOTICE
+
+This is an independent interoperability and preservation project. It is **not**
+affiliated with, endorsed by or sponsored by OWIM GmbH & Co. KG, Lidl, or
+Ultimate Speed.
+
+“Ultimate Speed”, “USBD1 A1”, “Lidl” and “OWIM” are trademarks of their
+respective owners and are used only to identify the device and the report
+format (nominative use). No vendor logo, icon, screenshot or trade dress is
+included in the public repository.
+
+## Vendor code is not included
+
+The analysis observed the publicly served report page. Vendor code, capture
+records, images, fonts and HAR are kept only in `evidence/private/`, which is
+gitignored, and are not distributed here.
+
+The decoder is an independent implementation of the observed format. It does
+not include or require vendor code.
+
+## Label strings
+
+`src/locales.js` contains short functional UI labels observed in the public
+page (`EFB`, `GOOD BATTERY`, `NORMAL`, `Car`, and their captured translations).
+They are reproduced only so that an encoded label can be read back faithfully.
+They are not an original translation work. Their provenance and capture date
+are recorded in the file header and in `INVESTIGATION.md`.
+
+## Optional `u` parameter
+
+The optional `u` parameter is opaque website state (a display date). It is not
+part of the QR payload, and this decoder does not decode it.
+
+## No warranty
+
+The decoder reproduces one captured application version. It is provided “as
+is”, without warranty of any kind. Verdicts are tester-reported codes, not an
+independent diagnosis. Do not use this project as the sole basis for a safety,
+warranty, insurance or vehicle-sale decision.

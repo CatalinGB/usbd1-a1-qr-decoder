@@ -1,0 +1,143 @@
+USBD1 A1 decoder — validation run
+Date: 2026-11-06
+Node: v26.8.2
+Chromium: Chromium 155.0.8059.84 Arch Linux
+playwright-core: 1.65.0
+
+=== npm test ===
+✔ format.spec.json states the timestamp and checksum limits (0.442718ms)
+ℹ tests 173
+ℹ suites 0
+ℹ pass 173
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 571.892115
+
+=== CLI: battery sample ===
+{
+  "ok": true,
+  "length": 53,
+  "type": "Battery Test",
+  "verdict": "GOOD BATTERY",
+  "soh": "51%",
+  "soc": "95%",
+  "rated": "510 A",
+  "voltage": "12.61 V",
+  "resistance": "6.06 mΩ",
+  "vehicle": "Car",
+  "time_encoded": false
+}
+
+=== CLI: cranking sample ===
+{
+  "ok": true,
+  "type": "Cranking Test",
+  "verdict": "NORMAL",
+  "voltage": "10.6 V",
+  "duration": "3580 ms",
+  "vehicle": "--"
+}
+
+=== CLI: indexed sample ===
+{
+  "ok": true,
+  "type": "Battery Test",
+  "language": "pl",
+  "technology": "Bateria tabletu AGM",
+  "verdict": "DOBRZE - ŁADOWANIA",
+  "soh": "66%",
+  "soc": "83%",
+  "rated": "760 A",
+  "voltage": "12.53 V",
+  "resistance": "3.59 mΩ",
+  "vehicle": "Samochód"
+}
+
+=== CLI exit codes ===
+missing d: 2
+length 52: 3
+strict baseline (info issues only): 0
+
+=== hashes ===
+8dcd1ff57714b45b38d95a3a59cae4a1057af0733b9fae0fc3ff8c99f60b03ab  decoder.html
+8dcd1ff57714b45b38d95a3a59cae4a1057af0733b9fae0fc3ff8c99f60b03ab  index.html
+
+=== offline browser test ===
+{
+  "allStepsPassed": true,
+  "externalRequests": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "steps": [
+    {
+      "step": "load"
+    },
+    {
+      "step": "sample-1",
+      "ok": true
+    },
+    {
+      "step": "sample-2",
+      "ok": true
+    },
+    {
+      "step": "sample-3",
+      "ok": true
+    },
+    {
+      "step": "paste-raw",
+      "ok": true
+    },
+    {
+      "step": "unsupported-length",
+      "ok": true
+    },
+    {
+      "step": "download-json",
+      "ok": true
+    },
+    {
+      "step": "download-markdown",
+      "ok": true
+    },
+    {
+      "step": "auto-fill-query",
+      "ok": true
+    }
+  ]
+}
+
+=== GitHub Pages live test (https://catalingb.github.io/usbd1-a1-qr-decoder/) ===
+{
+  "allPassed": true,
+  "checks": [
+    {
+      "name": "paste-full-url",
+      "ok": true
+    },
+    {
+      "name": "auto-fill-cranking",
+      "ok": true
+    },
+    {
+      "name": "sample-polish",
+      "ok": true
+    },
+    {
+      "name": "theme-toggle",
+      "ok": true
+    },
+    {
+      "name": "decoder.html-route",
+      "ok": true
+    }
+  ],
+  "externalRequests": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "title": "USBD1 A1 Report Reader — offline QR decoder",
+  "samples": 4,
+  "theme": "dark"
+}

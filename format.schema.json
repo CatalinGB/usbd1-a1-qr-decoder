@@ -1,0 +1,268 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/CatalinGB/usbd1-a1-qr-decoder/format.schema.json",
+  "title": "USBD1 A1 QR report decoder output",
+  "description": "Output of src/decoder.js decode(). The format is reverse-engineered from the publicly served e.dh5z.com report page captured on 2026-11-06. Fields not present in the payload are null, never fabricated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decoder", "input", "format", "ok", "report_type", "language",
+    "battery", "cranking", "charging", "vehicle_type", "reserved",
+    "display_time", "raw_slices", "issues"
+  ],
+  "properties": {
+    "decoder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "format_id", "parse_mode", "behavior_verified"],
+      "properties": {
+        "name": { "const": "usbd1-qr-decoder" },
+        "version": { "type": "string" },
+        "format_id": { "type": "string" },
+        "parse_mode": { "const": "js-parseInt" },
+        "behavior_verified": { "type": "boolean" }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "raw", "url", "payload", "payload_length", "d_count", "has_u", "query_keys"],
+      "properties": {
+        "kind": { "enum": ["url", "query", "payload"] },
+        "raw": { "type": "string" },
+        "url": { "type": ["string", "null"] },
+        "payload": { "type": ["string", "null"] },
+        "payload_length": { "type": "integer", "minimum": 0 },
+        "d_count": { "type": "integer", "minimum": 0 },
+        "has_u": { "type": "boolean" },
+        "query_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "format": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "expected_length", "actual_length", "length_ok", "supported", "checksum", "checksum_status"],
+      "properties": {
+        "id": { "type": "string" },
+        "expected_length": { "const": 53 },
+        "actual_length": { "type": "integer", "minimum": 0 },
+        "length_ok": { "type": "boolean" },
+        "supported": { "type": "boolean" },
+        "checksum": { "type": "null" },
+        "checksum_status": { "const": "none-in-captured-renderer" }
+      }
+    },
+    "ok": { "type": "boolean" },
+    "report_type": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "raw", "known", "name", "sections", "vendor_display"],
+      "properties": {
+        "code": { "type": ["string", "null"] },
+        "raw": { "type": ["string", "null"] },
+        "known": { "type": "boolean" },
+        "name": { "type": ["string", "null"] },
+        "sections": { "type": "array", "items": { "enum": ["battery", "cranking", "charging"] } },
+        "vendor_display": { "type": ["string", "null"] }
+      }
+    },
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "raw", "known", "resolved", "name", "available_in_selector"],
+      "properties": {
+        "code": { "type": ["string", "null"] },
+        "raw": { "type": ["string", "null"] },
+        "known": { "type": "boolean" },
+        "resolved": { "enum": ["en", "de", "es", "fr", "it", "nl", "zh", "jp", "ko", "ru", "pt", "pl", "fi", "gr", "se", "cz", "dk", "bg", "hr"] },
+        "name": { "type": "string" },
+        "available_in_selector": { "type": "boolean" }
+      }
+    },
+    "battery": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible", "technology", "standard", "verdict", "soc_percent", "soh_percent", "measured_a", "voltage_v", "resistance_mohm", "rated"],
+          "properties": {
+            "visible": { "type": "boolean" },
+            "technology": { "$ref": "#/$defs/codeField" },
+            "standard": { "$ref": "#/$defs/codeField" },
+            "verdict": { "$ref": "#/$defs/codeField" },
+            "soc_percent": { "$ref": "#/$defs/numericField" },
+            "soh_percent": { "$ref": "#/$defs/numericField" },
+            "measured_a": { "$ref": "#/$defs/numericField" },
+            "voltage_v": { "$ref": "#/$defs/numericField" },
+            "resistance_mohm": { "$ref": "#/$defs/numericField" },
+            "rated": { "$ref": "#/$defs/ratedField" }
+          }
+        }
+      ]
+    },
+    "cranking": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible", "verdict", "voltage_v", "duration_ms"],
+          "properties": {
+            "visible": { "type": "boolean" },
+            "verdict": { "$ref": "#/$defs/codeField" },
+            "voltage_v": { "$ref": "#/$defs/numericField" },
+            "duration_ms": { "$ref": "#/$defs/numericField" }
+          }
+        }
+      ]
+    },
+    "charging": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible", "verdict", "unloaded_v", "loaded_v", "ripple_mv"],
+          "properties": {
+            "visible": { "type": "boolean" },
+            "verdict": { "$ref": "#/$defs/codeField" },
+            "unloaded_v": { "$ref": "#/$defs/numericField" },
+            "loaded_v": { "$ref": "#/$defs/numericField" },
+            "ripple_mv": { "$ref": "#/$defs/numericField" }
+          }
+        }
+      ]
+    },
+    "vehicle_type": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["code", "raw", "known", "missing", "label", "label_localized", "vendor_fallback", "display"],
+          "properties": {
+            "code": { "type": ["string", "null"] },
+            "raw": { "type": ["string", "null"] },
+            "known": { "type": "boolean" },
+            "missing": { "type": "boolean" },
+            "label": { "type": ["string", "null"] },
+            "label_localized": { "type": ["string", "null"] },
+            "vendor_fallback": { "type": ["string", "null"] },
+            "display": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "reserved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw", "complete", "note"],
+      "properties": {
+        "raw": { "type": ["string", "null"] },
+        "complete": { "type": "boolean" },
+        "note": { "type": "string" }
+      }
+    },
+    "display_time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encoded_in_payload", "value", "source", "explanation"],
+      "properties": {
+        "encoded_in_payload": { "const": false },
+        "value": { "type": "null" },
+        "source": { "type": "string" },
+        "explanation": { "type": "string" }
+      }
+    },
+    "raw_slices": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["battery_type", "rated", "voltage", "measured", "standard", "battery_result", "soc", "soh", "resistance", "vehicle_type", "cranking_voltage", "cranking_duration", "cranking_result", "reserved", "charging_unloaded", "charging_loaded", "charging_ripple", "charging_result", "language", "report_type"],
+      "properties": {
+        "battery_type": { "type": ["string", "null"] },
+        "rated": { "type": ["string", "null"] },
+        "voltage": { "type": ["string", "null"] },
+        "measured": { "type": ["string", "null"] },
+        "standard": { "type": ["string", "null"] },
+        "battery_result": { "type": ["string", "null"] },
+        "soc": { "type": ["string", "null"] },
+        "soh": { "type": ["string", "null"] },
+        "resistance": { "type": ["string", "null"] },
+        "vehicle_type": { "type": ["string", "null"] },
+        "cranking_voltage": { "type": ["string", "null"] },
+        "cranking_duration": { "type": ["string", "null"] },
+        "cranking_result": { "type": ["string", "null"] },
+        "reserved": { "type": ["string", "null"] },
+        "charging_unloaded": { "type": ["string", "null"] },
+        "charging_loaded": { "type": ["string", "null"] },
+        "charging_ripple": { "type": ["string", "null"] },
+        "charging_result": { "type": ["string", "null"] },
+        "language": { "type": ["string", "null"] },
+        "report_type": { "type": ["string", "null"] }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "code", "field", "message"],
+        "properties": {
+          "severity": { "enum": ["error", "warning", "info"] },
+          "code": { "type": "string" },
+          "field": { "type": ["string", "null"] },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "codeField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "raw", "known", "missing", "label", "label_localized", "vendor_fallback"],
+      "properties": {
+        "code": { "type": ["string", "null"] },
+        "raw": { "type": ["string", "null"] },
+        "known": { "type": "boolean" },
+        "missing": { "type": "boolean" },
+        "label": { "type": ["string", "null"] },
+        "label_localized": { "type": ["string", "null"] },
+        "vendor_fallback": { "type": ["string", "null"] }
+      }
+    },
+    "numericField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw", "raw_complete", "value", "invalid", "missing", "decimal", "parse", "display", "unit"],
+      "properties": {
+        "raw": { "type": ["string", "null"] },
+        "raw_complete": { "type": "boolean" },
+        "value": { "type": ["number", "null"] },
+        "invalid": { "type": "boolean" },
+        "missing": { "type": "boolean" },
+        "decimal": { "type": "boolean" },
+        "parse": { "const": "js-parseInt" },
+        "display": { "type": "string" },
+        "unit": { "type": ["string", "null"] }
+      }
+    },
+    "ratedField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw", "raw_complete", "value", "invalid", "missing", "decimal", "parse", "display", "unit", "jis_designation"],
+      "properties": {
+        "raw": { "type": ["string", "null"] },
+        "raw_complete": { "type": "boolean" },
+        "value": { "type": ["number", "null"] },
+        "invalid": { "type": "boolean" },
+        "missing": { "type": "boolean" },
+        "decimal": { "type": "boolean" },
+        "parse": { "const": "js-parseInt" },
+        "display": { "type": "string" },
+        "unit": { "type": ["string", "null"] },
+        "jis_designation": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

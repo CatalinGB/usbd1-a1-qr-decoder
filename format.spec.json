@@ -1,0 +1,370 @@
+{
+  "id": "usbd1-a1.dh5z.webapp-2024-11-29",
+  "title": "USBD1 A1 / e.dh5z.com report payload",
+  "captured_at": "2026-11-06",
+  "payload": {
+    "length": 53,
+    "encoding": "UTF-16 code units",
+    "alphabet": "Observed: digits 0-9 in numeric fields; single-character codes; a-j additionally valid in the language field. The captured page does not validate the alphabet.",
+    "preserve_raw": true
+  },
+  "parser": {
+    "split": "payload.split('')",
+    "number": "parseInt(raw) with no radix",
+    "length_validation": false,
+    "alphabet_validation": false,
+    "checksum_validation": false,
+    "unknown_code_behavior": "render the i18n key, e.g. batteryTest.type_9"
+  },
+  "fields": [
+    {
+      "name": "battery_type",
+      "start": 0,
+      "end": 1,
+      "kind": "enum",
+      "enum": "battery_type"
+    },
+    {
+      "name": "rated",
+      "start": 1,
+      "end": 5,
+      "kind": "rated",
+      "scale": 1,
+      "unit_by_standard": {
+        "2": null,
+        "5": "Ah",
+        "default": "A"
+      }
+    },
+    {
+      "name": "voltage",
+      "start": 5,
+      "end": 9,
+      "kind": "scaled_integer",
+      "scale": 100,
+      "unit": "V"
+    },
+    {
+      "name": "measured",
+      "start": 9,
+      "end": 13,
+      "kind": "integer",
+      "scale": 1,
+      "unit": "A"
+    },
+    {
+      "name": "standard",
+      "start": 13,
+      "end": 14,
+      "kind": "enum",
+      "enum": "standard"
+    },
+    {
+      "name": "battery_result",
+      "start": 14,
+      "end": 15,
+      "kind": "enum",
+      "enum": "battery_result"
+    },
+    {
+      "name": "soc",
+      "start": 15,
+      "end": 18,
+      "kind": "integer",
+      "scale": 1,
+      "unit": "%"
+    },
+    {
+      "name": "soh",
+      "start": 18,
+      "end": 21,
+      "kind": "integer",
+      "scale": 1,
+      "unit": "%"
+    },
+    {
+      "name": "resistance",
+      "start": 21,
+      "end": 26,
+      "kind": "scaled_integer",
+      "scale": 100,
+      "unit": "mΩ"
+    },
+    {
+      "name": "vehicle_type",
+      "start": 26,
+      "end": 27,
+      "kind": "enum",
+      "enum": "vehicle_type"
+    },
+    {
+      "name": "cranking_voltage",
+      "start": 27,
+      "end": 31,
+      "kind": "scaled_integer",
+      "scale": 100,
+      "unit": "V"
+    },
+    {
+      "name": "cranking_duration",
+      "start": 31,
+      "end": 35,
+      "kind": "integer",
+      "scale": 1,
+      "unit": "ms"
+    },
+    {
+      "name": "cranking_result",
+      "start": 35,
+      "end": 36,
+      "kind": "enum",
+      "enum": "cranking_result"
+    },
+    {
+      "name": "reserved",
+      "start": 36,
+      "end": 38,
+      "kind": "reserved",
+      "note": "Never read by the captured renderer; semantics unknown."
+    },
+    {
+      "name": "charging_loaded",
+      "start": 38,
+      "end": 42,
+      "kind": "scaled_integer",
+      "scale": 100,
+      "unit": "V"
+    },
+    {
+      "name": "charging_unloaded",
+      "start": 42,
+      "end": 46,
+      "kind": "scaled_integer",
+      "scale": 100,
+      "unit": "V"
+    },
+    {
+      "name": "charging_ripple",
+      "start": 46,
+      "end": 50,
+      "kind": "integer",
+      "scale": 1,
+      "unit": "mV"
+    },
+    {
+      "name": "charging_result",
+      "start": 50,
+      "end": 51,
+      "kind": "enum",
+      "enum": "charging_result"
+    },
+    {
+      "name": "language",
+      "start": 51,
+      "end": 52,
+      "kind": "enum",
+      "enum": "language",
+      "fallback": "en"
+    },
+    {
+      "name": "report_type",
+      "start": 52,
+      "end": 53,
+      "kind": "enum",
+      "enum": "report_type"
+    }
+  ],
+  "enums": {
+    "battery_type": {
+      "0": "--",
+      "1": "Regular Flooded",
+      "2": "AGM Flat Plate",
+      "3": "AGM Spiral",
+      "4": "GEL",
+      "5": "EFB",
+      "6": "Lithium Ion"
+    },
+    "battery_result": {
+      "0": "--",
+      "1": "GOOD BATTERY",
+      "2": "REPLACE",
+      "3": "GOOD-RECHARGE",
+      "4": "CHARGE & RETEST",
+      "5": "BAD CELL"
+    },
+    "cranking_result": {
+      "0": "--",
+      "1": "NORMAL",
+      "2": "LOW",
+      "3": "HIGH"
+    },
+    "charging_result": {
+      "0": "NO OUTPUT",
+      "1": "VOLTAGE NORMAL",
+      "2": "VOLTAGE HIGH",
+      "3": "VOLTAGE LOW"
+    },
+    "vehicle_type": {
+      "0": "--",
+      "1": "Motorcycle",
+      "2": "Car",
+      "3": "Truck"
+    },
+    "standard": {
+      "0": "CCA",
+      "1": "DIN",
+      "2": "JIS",
+      "3": "EN",
+      "4": "IEC",
+      "5": "GB",
+      "6": "SAE",
+      "7": "MCA",
+      "8": "BCI",
+      "9": "CA"
+    },
+    "report_type": {
+      "1": "Battery Test",
+      "2": "Cranking Test",
+      "3": "Charging Test",
+      "4": "All tests"
+    }
+  },
+  "languages": {
+    "1": "de",
+    "2": "en",
+    "3": "es",
+    "4": "fr",
+    "5": "it",
+    "6": "nl",
+    "7": "zh",
+    "8": "jp",
+    "9": "ko",
+    "a": "ru",
+    "b": "pt",
+    "c": "pl",
+    "d": "fi",
+    "e": "gr",
+    "f": "se",
+    "g": "cz",
+    "h": "dk",
+    "i": "bg",
+    "j": "hr"
+  },
+  "report_types": {
+    "1": {
+      "name": "Battery Test",
+      "sections": [
+        "battery"
+      ]
+    },
+    "2": {
+      "name": "Cranking Test",
+      "sections": [
+        "cranking"
+      ]
+    },
+    "3": {
+      "name": "Charging Test",
+      "sections": [
+        "charging"
+      ]
+    },
+    "4": {
+      "name": "All tests",
+      "sections": [
+        "battery",
+        "cranking",
+        "charging"
+      ]
+    }
+  },
+  "jis_values": [
+    "26A17",
+    "26A19",
+    "30A19",
+    "34A19",
+    "26B17",
+    "28B17",
+    "28B19",
+    "34B17",
+    "34B19",
+    "36B20",
+    "38B19",
+    "38B20",
+    "40B19",
+    "42B19",
+    "44B19",
+    "44B20",
+    "46B24",
+    "50B24",
+    "55B24",
+    "60B24",
+    "65B24",
+    "32C24",
+    "48D26",
+    "50D20",
+    "55D23",
+    "55D26",
+    "65D23",
+    "65D26",
+    "65D31",
+    "70D23",
+    "75D23",
+    "75D26",
+    "75D31",
+    "80D23",
+    "80D26",
+    "85D23",
+    "85D26",
+    "90D26",
+    "95D31",
+    "105D31",
+    "110D26",
+    "115D31",
+    "95E41",
+    "100E41",
+    "105E41",
+    "110E41",
+    "115E41",
+    "120E41",
+    "130E41",
+    "115F51",
+    "130F51",
+    "145F51",
+    "150F51",
+    "170F51",
+    "145G51",
+    "155G51",
+    "165G51",
+    "180G51",
+    "195G51",
+    "190H52",
+    "210H52",
+    "225H52",
+    "245H52",
+    "NS40Z",
+    "NS50Z",
+    "NS60Z",
+    "NS70Z",
+    "N100Z",
+    "N120Z",
+    "N150Z",
+    "N200Z"
+  ],
+  "checksum": {
+    "field_present": "unknown",
+    "validated_by_captured_renderer": false,
+    "note": "No checksum field is read or validated by the captured page. Whether the tester places a checksum somewhere in the payload is unknown."
+  },
+  "timestamp": {
+    "encoded_in_payload": false,
+    "source": "browser page-load time (new Date()) or an opaque u query parameter",
+    "note": "TIME is not the measurement time. The u parameter is not part of the QR payload."
+  },
+  "provenance": {
+    "application": "https://e.dh5z.com/",
+    "evidence": "evidence/method-notes.md",
+    "differential_comparisons": 2337,
+    "differential_mismatches": 0
+  }
+}

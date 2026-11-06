@@ -1,0 +1,32 @@
+{
+  "base": "https://catalingb.github.io/usbd1-a1-qr-decoder/",
+  "checks": [
+    {
+      "name": "paste-full-url",
+      "ok": true
+    },
+    {
+      "name": "auto-fill-cranking",
+      "ok": true
+    },
+    {
+      "name": "sample-polish",
+      "ok": true
+    },
+    {
+      "name": "theme-toggle",
+      "ok": true
+    },
+    {
+      "name": "decoder.html-route",
+      "ok": true
+    }
+  ],
+  "title": "USBD1 A1 Report Reader — offline QR decoder",
+  "samples": 4,
+  "theme": "dark",
+  "externalRequests": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "allPassed": true
+}

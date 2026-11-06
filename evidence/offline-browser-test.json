@@ -1,0 +1,54 @@
+{
+  "fileUrl": "file:///home/kalio/Projects/my-project-battery-tool/decoder.html",
+  "offline": true,
+  "steps": [
+    {
+      "step": "load",
+      "title": "USBD1 A1 Report Reader — offline QR decoder",
+      "externalRequests": 0
+    },
+    {
+      "step": "sample-1",
+      "ok": true,
+      "text": "BATTERY TEST · TESTER-REPORTED\nGOOD BATTERY\nTechnology\nEFB\nRated\n510 A\nVehicle\nCar\nLanguage\nEnglish\nVerified layout\nverdict code 1\npayload 53 / 53\nBattery measurements\ntester-reported values\n51%\nState of health\n\nSoH from the tester\n\nraw 051\n95%\nState of charge\n\nSoC from the tester\n\nraw 095\nMEASURED CURRENT\n366 A\nraw 0366\nBATTERY VOLTAGE\n12.61 V\nraw 1261\nINTERNAL RESISTANCE\n6.06 mΩ\nraw 00606\nRATED\n510 A\nraw 0510\nReport details\nBATTERY TECHNOLOGY\nEFB\ncode 5 · raw 5\nRATING STANDARD\nEN\ncode 3 · raw "
+    },
+    {
+      "step": "sample-2",
+      "ok": true,
+      "text": "CRANKING TEST · TESTER-REPORTED\nNORMAL\nVehicle\n--\nLanguage\nEnglish\nVerified layout\nverdict code 1\npayload 53 / 53\nCranking measurements\ntester-reported values\nCRANKING VOLTAGE\n10.6 V\nraw 1060\nDURATION\n3580 ms\nraw 3580\nReport details\nBATTERY TECHNOLOGY\n--\ncode 0 · raw 0\nRATING STANDARD\nCCA\ncode 0 · raw 0\nVEHICLE TYPE\n--\ncode 0 · raw 0\nREPORT TYPE\nCranking Test\ncode 2 · raw 2\nLANGUAGE\nEnglish (en)\ncode 2 · raw 2\nPAYLOAD LENGTH\n53 / 53\nCHECKSUM\nNot checked by the page\nRESERVED [36,38)\n00\nraw 00\nTIM"
+    },
+    {
+      "step": "sample-3",
+      "ok": true,
+      "text": "BATTERY TEST · TESTER-REPORTED\nDOBRZE - ŁADOWANIA\nTechnology\nBateria tabletu AGM\nRated\n760 A\nVehicle\nSamochód\nLanguage\nPolish\nVerified layout\nverdict code 3\npayload 53 / 53\nBattery measurements\ntester-reported values\n66%\nState of health\n\nSoH from the tester\n\nraw 066\n83%\nState of charge\n\nSoC from the tester\n\nraw 083\nMEASURED CURRENT\n618 A\nraw 0618\nBATTERY VOLTAGE\n12.53 V\nraw 1253\nINTERNAL RESISTANCE\n3.59 mΩ\nraw 00359\nRATED\n760 A\nraw 0760\nReport details\nBATTERY TECHNOLOGY\nBateria tabletu AGM\ncode "
+    },
+    {
+      "step": "paste-raw",
+      "ok": true,
+      "text": "BATTERY TEST · TESTER-REPORTED\nGOOD BATTERY\nTechnology\nEFB\nRated\n510 A\nVehicle\nCar\nLanguage\nEnglish\nVerified layout\nverdict code 1\npayload 53 / 53\nBattery measurements\ntester-reported values\n51%\nState of health\n\nSoH from the tester\n\nraw 051\n95%\nState of charge\n\nSoC from the tester\n\nraw 095\nMEASURED CURRENT\n366 A\nraw 0366\nBATTERY VOLTAGE\n12.61 V\nraw 1261\nINTERNAL RESISTANCE\n6.06 mΩ\nraw 00606\nRATED\n510 A\nraw 0510\nReport details\nBATTERY TECHNOLOGY\nEFB\ncode 5 · raw 5\nRATING STANDARD\nEN\ncode 3 · raw "
+    },
+    {
+      "step": "unsupported-length",
+      "ok": true,
+      "text": "Unsupported payload length: 52 (expected 53)\n\nThe values below are a best-effort decode using the captured layout. Do not treat them as verified for this firmware.\n\nREPORT\nNo test section\nVehicle\nCar\nLanguage\nEnglish\nUnsupported length\npayload 52 / 53\nReport details\nBATTERY TECHNOLOGY\nEFB\ncode 5 · r"
+    },
+    {
+      "step": "download-json",
+      "filename": "usbd1-report-505101261036.json",
+      "ok": true
+    },
+    {
+      "step": "download-markdown",
+      "filename": "usbd1-report-505101261036.md",
+      "ok": true
+    },
+    {
+      "step": "auto-fill-query",
+      "ok": true
+    }
+  ],
+  "externalRequests": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "allStepsPassed": true
+}
